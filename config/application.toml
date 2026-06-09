@@ -1,0 +1,5 @@
+# Application-level override config for swe-edge-loadbalancer.
+# Override the SWE defaults here. Leave sections absent to use crate defaults.
+
+[loadbalancer]
+strategy = "round-robin"
