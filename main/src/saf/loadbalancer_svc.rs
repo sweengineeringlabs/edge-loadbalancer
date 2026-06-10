@@ -1,12 +1,17 @@
 //! Public factory entry point for `swe-edge-loadbalancer`.
 
+use std::sync::Arc;
+
 use crate::api::error::LoadbalancerError;
-use crate::api::traits::{BackendPool, Validator};
+use crate::api::traits::{BackendPool, InstancePool, Validator};
 use crate::api::types::backend::{Backend, BackendId};
 use crate::api::types::config::LoadbalancerConfig;
+use crate::api::types::identity::{HandlerId, TenantId};
+use crate::api::types::ingress::NoopIngressLoadBalancer;
 use crate::api::types::loadbalancer_svc::LoadbalancerSvc;
 use crate::api::types::outcome::Outcome;
-use crate::api::types::pool::BackendPoolInstance;
+use crate::api::types::pool::{BackendPoolInstance, HandlerInstancePool};
+use crate::api::types::registry::{InMemoryPoolRegistry, TomlTenantRegistry};
 
 impl LoadbalancerSvc {
     /// Build a [`BackendPoolInstance`] from a [`LoadbalancerConfig`].
@@ -78,4 +83,54 @@ pub fn report_backend_outcome(pool: &BackendPoolInstance, id: &BackendId, outcom
 /// Return the number of backends registered in the pool.
 pub fn pool_backend_count(pool: &BackendPoolInstance) -> usize {
     LoadbalancerSvc::backend_count(pool)
+}
+
+/// Build a [`NoopIngressLoadBalancer`] — the default single-node ingress
+/// balancer that admits every request in-process (ADR-012).
+pub fn build_noop_ingress_lb() -> NoopIngressLoadBalancer {
+    NoopIngressLoadBalancer::default()
+}
+
+/// Build a [`HandlerInstancePool`] gating `concurrency_cap` concurrent
+/// executions of `handler_id`, optionally scoped to `tenant_id`.
+///
+/// # Errors
+///
+/// Returns [`LoadbalancerError::InvalidConfig`] when `concurrency_cap` is 0.
+pub fn build_handler_pool(
+    handler_id: HandlerId,
+    tenant_id: Option<TenantId>,
+    concurrency_cap: usize,
+) -> Result<HandlerInstancePool, LoadbalancerError> {
+    HandlerInstancePool::build(handler_id, tenant_id, concurrency_cap)
+}
+
+/// Build an empty [`InMemoryPoolRegistry`].
+pub fn build_pool_registry() -> InMemoryPoolRegistry {
+    InMemoryPoolRegistry::build()
+}
+
+/// Register a pool in an existing [`InMemoryPoolRegistry`].
+///
+/// Overwrites any previous registration for the same `(handler, tenant)` pair.
+pub fn register_handler_pool(
+    registry: &InMemoryPoolRegistry,
+    handler_id: &HandlerId,
+    tenant_id: Option<&TenantId>,
+    pool: Arc<dyn InstancePool>,
+) {
+    registry.register(handler_id, tenant_id, pool);
+}
+
+/// Parse a TOML document into a [`TomlTenantRegistry`].
+///
+/// The document must contain a `[tenant.assignments]` table mapping tenant
+/// id strings to tier name strings.
+///
+/// # Errors
+///
+/// Returns [`LoadbalancerError::ParseFailed`] when the document is invalid
+/// TOML or the section has the wrong shape.
+pub fn build_tenant_registry(toml_str: &str) -> Result<TomlTenantRegistry, LoadbalancerError> {
+    TomlTenantRegistry::build(toml_str)
 }

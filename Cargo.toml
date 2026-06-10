@@ -1,12 +1,12 @@
 [package]
 name = "swe-edge-loadbalancer"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 rust-version = "1.82"
 authors = ["SWE Engineering Labs"]
 repository = "https://github.com/sweengineeringlabs/edge-loadbalancer"
-description = "Load balancer contract — BackendPool, Strategy, Outcome, BackendHealth"
+description = "Shared LB primitives — BackendPool, InstancePool, IngressLoadBalancer, TenantRegistry, PoolRegistry (ADR-011/012/013)"
 keywords = ["loadbalancer", "backend", "pool", "http", "swe"]
 categories = ["network-programming"]
 

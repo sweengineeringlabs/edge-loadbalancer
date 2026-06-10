@@ -1,8 +1,13 @@
-//! swe-edge-loadbalancer — Load balancer contract for swe-edge-egress-http.
+//! swe-edge-loadbalancer — shared load balancer primitives for swe-edge.
 //!
-//! Provides `BackendPool`, `Strategy`, `Outcome`, `BackendHealth`, and related
-//! types for configuring and operating a pool of HTTP backends with round-robin,
-//! weighted, and least-connections selection strategies.
+//! **v0.1** — egress slice: `BackendPool`, `Strategy`, `Outcome`, `BackendHealth`,
+//! and related types for HTTP backend pools with round-robin, weighted, and
+//! least-connections strategies.
+//!
+//! **v0.2** — ingress + scaling slice: `IngressLoadBalancer`, `InstancePool`,
+//! `ScalingSignal`, `TenantRegistry`, `PoolRegistry`, identity newtypes, and
+//! default implementations (`NoopIngressLoadBalancer`, `HandlerInstancePool`,
+//! `InMemoryPoolRegistry`, `TomlTenantRegistry`) backing ADR-011/012/013.
 
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
