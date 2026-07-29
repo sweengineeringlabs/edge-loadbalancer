@@ -2,7 +2,7 @@
 
 ## Architecture
 
-This crate follows the SEA (Structural Engineering Architecture) module layout:
+This crate follows the SEA (Service Encapsulation Architecture) module layout:
 
 - `api/` — public traits and types.
 - `core/` — private implementations (`pub(crate)` only).

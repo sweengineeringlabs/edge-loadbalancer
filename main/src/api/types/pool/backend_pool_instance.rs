@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::api::pool::inner::pool_inner::PoolInner as PoolInnerTrait;
 use crate::api::types::strategy::Strategy;
 
-/// A concrete backend pool implementing the [`crate::api::traits::BackendPool`] trait.
+/// A concrete backend pool implementing the `BackendPool` trait.
 ///
 /// Returned by [`crate::LoadbalancerSvc::build_pool`] and the `build_backend_pool`
 /// SAF function. Thread-safe; the actual backend state is held behind a

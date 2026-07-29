@@ -1,0 +1,59 @@
+{
+  "timestamp": "2026-06-14T13:30:12.874920800+00:00",
+  "results": [
+    {
+      "id": 191,
+      "category": "interface",
+      "description": "SEA layer files must not contain free-standing fn — all functions must be methods on a type (OOP violation)",
+      "result": {
+        "status": "pass"
+      }
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "duration_ms": 116.7625
+  },
+  "project_layout": "library",
+  "application_type": "lib",
+  "rule_labels": {
+    "89": [
+      "core",
+      "spi"
+    ],
+    "113": [
+      "core",
+      "spi"
+    ],
+    "90": [
+      "core",
+      "spi"
+    ],
+    "124": [
+      "core",
+      "spi"
+    ],
+    "111": [
+      "core",
+      "spi"
+    ],
+    "50": [
+      "core",
+      "spi"
+    ],
+    "51": [
+      "core",
+      "spi"
+    ],
+    "86": [
+      "core",
+      "spi"
+    ]
+  },
+  "active_filters": [
+    "checks=191"
+  ]
+}
