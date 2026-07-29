@@ -5,6 +5,46 @@ All notable changes to `swe-edge-loadbalancer` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-07-29
+
+### Changed
+
+- **Breaking:** split `swe-edge-loadbalancer` along its subdomain boundaries into
+  five new crates plus this umbrella crate, per ADR-001
+  (`docs/adr/ADR-001-subdomain-crate-split.md`) — tracked in epic #2 / issue #3.
+  Anyone depending on this crate's internal module paths (`swe_edge_loadbalancer::api::...`,
+  `swe_edge_loadbalancer::core::...`) rather than its public re-exports breaks; no such
+  consumer exists today (confirmed in issue #1 / edge#407). The umbrella crate keeps its
+  name and its `LoadbalancerSvc` facade's ten associated methods unchanged, so existing
+  consumers who depend on `swe-edge-loadbalancer` alone are unaffected. Migration mapping
+  (old module path in this crate → new crate):
+
+  | Old module path (`swe-edge-loadbalancer`) | New crate |
+  |---|---|
+  | `api::types::identity::TenantId` | `swe-edge-loadbalancer-tenant` (`TenantId`) |
+  | `api::traits::BackendPool`, `api::types::pool::BackendPoolInstance`, `api::types::strategy::Strategy`, `api::types::outcome::Outcome`, `api::types::backend::{Backend, BackendHealth, BackendId}`, `api::types::config::{LoadbalancerConfig, BackendConfig}`, `api::types::application_config_builder::ApplicationConfigBuilder`, `api::pool::inner::{BackendEntry, PoolInner}` | `swe-edge-loadbalancer-egress` (own `EgressError`, ADR-011) |
+  | `api::traits::{InstancePool, ScalingExecutor, ScalingSignal}`, `api::types::pool::HandlerInstancePool`, `api::types::scaling::{PoolSnapshot, ScaleOutHint, ScalingDecision}`, `api::types::identity::HandlerId` | `swe-edge-loadbalancer-autoscale` (own `AutoscaleError`, ADR-013) |
+  | `api::traits::IngressLoadBalancer`, `api::types::ingress::{LoadBalancerHint, NoopIngressLoadBalancer}`, `api::types::identity::NodeId` | `swe-edge-loadbalancer-ingress` (own `IngressError`, ADR-012) |
+  | `api::traits::{PoolRegistry, TenantRegistry}`, `api::types::registry::{InMemoryPoolRegistry, TomlTenantRegistry}` | `swe-edge-loadbalancer-registry` (own `RegistryError`) |
+  | `api::error::LoadbalancerError` | stays in this crate; unchanged 3-variant shape (`NoHealthyBackends`/`InvalidConfig`/`ParseFailed`) for this release — becomes an aggregating error wrapping `EgressError`/`IngressError`/`AutoscaleError`/`RegistryError` (each with a `From` impl) once issue #10 lands, so `LoadbalancerSvc`'s public signatures keep returning `swe_edge_loadbalancer::LoadbalancerError` throughout |
+  | `saf::loadbalancer_svc::LoadbalancerSvc` | stays in this crate |
+
+  Each new crate is independently depended-on today: a consumer that only needs,
+  e.g., `ingress` + `registry` can take those two crates directly instead of
+  pulling in `egress`/`autoscale`, and gets that subdomain's own scoped error
+  type (`IngressError`/`RegistryError`) rather than the umbrella's error type.
+  **Not yet done as of this release:**
+  the umbrella's internal implementation retarget onto these five crates
+  (`LoadbalancerSvc`'s methods delegating into each subdomain crate's own
+  constructors instead of local `core/` code, and `LoadbalancerError` becoming
+  the aggregating wrapper) — tracked separately in issue #10. Until #10 lands,
+  this crate's own `main/src/` and `tests/` are unchanged and continue to build
+  and pass their full existing test suite standalone, so no consumer sees any
+  behavior change from this release beyond the five new crates becoming
+  available to depend on directly. No `-common` grab-bag crate was created;
+  see the ADR's Revision note for why `TenantId` alone (not also `HandlerId`/
+  `NodeId`/`LoadbalancerError`) needed a shared-kernel crate.
+
 ## [0.3.0] - 2026-07-29
 
 ### Changed
