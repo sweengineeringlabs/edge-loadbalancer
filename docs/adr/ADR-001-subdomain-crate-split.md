@@ -17,6 +17,49 @@ which resolved its port/adapter blocker and proceeded same-day, this crate's
 equivalent blocker is crate-wide, not a single entangled signature, and there is no
 current consumer to validate a redesign against.
 
+## Revision note (superseded — kept for history)
+
+This ADR originally (same date, same file) proposed a sixth `swe-edge-loadbalancer-common`
+crate holding all three identity newtypes (`HandlerId`, `NodeId`, `TenantId`) plus the
+single `LoadbalancerError` enum, on the reasoning that all four were referenced from
+more than one subdomain. That was rejected on review as an unjustified grab-bag risk —
+"common" crates accumulate unrelated things over time with no enforced membership
+criterion. Re-investigated using only *real* signature usage (trait method signatures
+and inherent-impl call sites, not doc-comment mentions or "the type is imported in this
+file"), per-type and per-error-variant:
+
+- `NodeId` — used only by `ingress` (`IngressLoadBalancer::add_node`/`remove_node`).
+  No sharing needed; moves into `-ingress`.
+- `HandlerId` — used only by `autoscale` (`InstancePool`, `ScalingExecutor`,
+  `HandlerInstancePool`) and `registry` (`PoolRegistry`, `InMemoryPoolRegistry`).
+  `-registry` already depends on `-autoscale` for the `InstancePool` trait (the one
+  real cross-subdomain edge), so it gets `HandlerId` on that same existing edge — no
+  new dependency. Moves into `-autoscale`.
+- `TenantId` — genuinely 3-way, in real trait signatures:
+  `IngressLoadBalancer::on_accept`, `ScalingExecutor::scale_up`/`scale_down`,
+  `TenantRegistry::tier_of`. No asymmetric owner exists without either a dependency
+  cycle (`autoscale` and `ingress` don't and shouldn't depend on each other) or forcing
+  a subdomain to pull in an entire unrelated crate for one newtype. This is the one
+  genuine shared-kernel type — see Decision §1.
+- `LoadbalancerError` — checked live signatures, not the enum's import list: each
+  variant partitions cleanly to a single owning subdomain or pair
+  (`NoHealthyBackends` → egress only; `ParseFailed` → egress + registry;
+  `InvalidConfig` → egress + autoscale + ingress). This is not a shared-type case,
+  it's "one enum doing four jobs" — the fix is to split it per-subdomain
+  (`EgressError`/`IngressError`/`AutoscaleError`/`RegistryError`) with the umbrella
+  crate defining an aggregating `LoadbalancerError` purely to keep the public
+  `swe_edge_loadbalancer::LoadbalancerError` path stable. No shared crate needed.
+  Confirmed separately that only `BackendPool` (egress) and `IngressLoadBalancer`
+  (ingress) bake an error type into a cross-implementor trait contract — `autoscale`'s
+  and `registry`'s error usage is confined to their own inherent constructors
+  (`HandlerInstancePool::build`, `TomlTenantRegistry::build`), not trait methods,
+  which makes the per-subdomain split unambiguous for those two.
+
+Net effect: no `-common` crate. Five crates instead of six — `-tenant` (containing
+only `TenantId`) replaces it, scoped narrowly enough that its membership criterion
+is unambiguous (exactly the one type with no valid single-subdomain owner) rather
+than an open invitation to dump anything vaguely shared into it later.
+
 ## Problem
 
 `swe-edge-loadbalancer` grew from a v0.1 egress-only scope (`BackendPool`, `Strategy`,
@@ -27,10 +70,11 @@ a supporting lookup layer, all as one crate:
 
 | Subdomain | Governing ADR | Types | Depends on |
 |---|---|---|---|
-| **egress-pool** | ADR-011 | `BackendPool` (trait), `BackendPoolInstance`, `Strategy`, `Outcome`, `Backend`/`BackendHealth`/`BackendId`, `LoadbalancerConfig`/`BackendConfig` | — |
-| **instance-pool / autoscale** | ADR-013 | `InstancePool`/`ScalingSignal`/`ScalingExecutor` (traits), `HandlerInstancePool`, `PoolSnapshot`, `ScaleOutHint`, `ScalingDecision` | — |
-| **ingress** | ADR-012 | `IngressLoadBalancer` (trait), `NoopIngressLoadBalancer`, `LoadBalancerHint` | — |
-| **registry** | (supporting) | `PoolRegistry`/`TenantRegistry` (traits), `InMemoryPoolRegistry`, `TomlTenantRegistry` | `InstancePool` (trait only) |
+| **egress-pool** | ADR-011 | `BackendPool` (trait), `BackendPoolInstance`, `Strategy`, `Outcome`, `Backend`/`BackendHealth`/`BackendId`, `LoadbalancerConfig`/`BackendConfig`, `EgressError` | — |
+| **instance-pool / autoscale** | ADR-013 | `InstancePool`/`ScalingSignal`/`ScalingExecutor` (traits), `HandlerInstancePool`, `PoolSnapshot`, `ScaleOutHint`, `ScalingDecision`, `HandlerId`, `AutoscaleError` | `-tenant` (`TenantId`) |
+| **ingress** | ADR-012 | `IngressLoadBalancer` (trait), `NoopIngressLoadBalancer`, `LoadBalancerHint`, `NodeId`, `IngressError` | `-tenant` (`TenantId`) |
+| **registry** | (supporting) | `PoolRegistry`/`TenantRegistry` (traits), `InMemoryPoolRegistry`, `TomlTenantRegistry`, `RegistryError` | `-autoscale` (`InstancePool` trait + `HandlerId`), `-tenant` (`TenantId`) |
+| **tenant** | (shared kernel) | `TenantId` only | — |
 
 Confirmed by direct grep of every `use crate::api` in each subdomain's files: `ingress`
 has zero dependency on `pool` or `registry`; `registry` depends only on the
@@ -92,23 +136,31 @@ resulting API shape against, is speculative cost with no near-term payoff.
 
 ### 1. Split by subdomain now
 
-Six crates, replacing the current single `swe-edge-loadbalancer`:
+Six crates, replacing the current single `swe-edge-loadbalancer` — five leaf/subdomain
+crates plus the umbrella (no `-common`; see Revision note above):
 
-- `swe-edge-loadbalancer-common` — shared identity newtypes (`HandlerId`, `NodeId`,
-  `TenantId`), `LoadbalancerError`. Used by every other subdomain crate below.
-- `swe-edge-loadbalancer-egress` — ADR-011 egress-pool subdomain.
-- `swe-edge-loadbalancer-autoscale` — ADR-013 instance-pool/scaling subdomain.
-- `swe-edge-loadbalancer-ingress` — ADR-012 ingress subdomain.
-- `swe-edge-loadbalancer-registry` — registry subdomain. Depends on
-  `swe-edge-loadbalancer-autoscale` for the `InstancePool` trait (the one real
-  cross-subdomain edge).
+- `swe-edge-loadbalancer-tenant` — shared kernel, `TenantId` only. The one type with
+  no valid single-subdomain owner. Used by `-autoscale`, `-ingress`, `-registry`.
+- `swe-edge-loadbalancer-egress` — ADR-011 egress-pool subdomain, plus its own
+  `EgressError` (`NoHealthyBackends`, `InvalidConfig`, `ParseFailed`).
+- `swe-edge-loadbalancer-autoscale` — ADR-013 instance-pool/scaling subdomain, plus
+  `HandlerId` and its own `AutoscaleError` (`InvalidConfig`). Depends on `-tenant`.
+- `swe-edge-loadbalancer-ingress` — ADR-012 ingress subdomain, plus `NodeId` and its
+  own `IngressError` (`InvalidConfig`). Depends on `-tenant`.
+- `swe-edge-loadbalancer-registry` — registry subdomain, plus its own `RegistryError`
+  (`ParseFailed`). Depends on `-autoscale` (`InstancePool` trait, `HandlerId`) and
+  `-tenant` (`TenantId`).
 - `swe-edge-loadbalancer` — umbrella crate, keeps the current name and public API
   shape. Depends on all five above; `LoadbalancerSvc` stays the unified facade,
   its methods now delegating into each subdomain crate's own constructors instead
-  of local `core/` code. Existing/future consumers who want everything keep
-  depending on this one crate unchanged; a future consumer who wants only e.g.
-  `ingress` + `registry` can depend on those two directly instead of pulling in
-  `egress`/`autoscale`.
+  of local `core/` code. Defines the aggregating `LoadbalancerError` enum
+  (`Egress(EgressError)` / `Ingress(IngressError)` / `Autoscale(AutoscaleError)` /
+  `Registry(RegistryError)` variants, with `From` impls) so `LoadbalancerSvc`'s public
+  signatures keep returning `swe_edge_loadbalancer::LoadbalancerError` unchanged.
+  Existing/future consumers who want everything keep depending on this one crate
+  unchanged; a future consumer who wants only e.g. `ingress` + `registry` can depend
+  on those two directly instead of pulling in `egress`/`autoscale`, and gets that
+  subdomain's own scoped error type rather than the umbrella's aggregate.
 
 This preserves the current public API surface exactly (umbrella crate = today's
 crate, same name, same `LoadbalancerSvc` methods) while making granular consumption
@@ -144,26 +196,31 @@ assuming every subdomain hits the same wall.
 
 ## What changes
 
+- `main/src/api/types/identity/tenant_id.rs` → new `swe-edge-loadbalancer-tenant` crate
 - `main/src/api/types/{backend,config}/**`, `main/src/api/types/pool/backend_pool_instance.rs`,
   `main/src/core/pool/backend_pool_instance.rs`, `Strategy`, `Outcome`,
-  `ApplicationConfigBuilder` → new `swe-edge-loadbalancer-egress` crate
+  `ApplicationConfigBuilder`, `main/src/api/pool/inner/**` (the `BackendEntry`/
+  `PoolInner` traits — already cleanly `core`-only via their trait/private-struct
+  split, no entanglement), and a new local `EgressError` (the `NoHealthyBackends`/
+  `InvalidConfig`/`ParseFailed` variants currently on `LoadbalancerError`) → new
+  `swe-edge-loadbalancer-egress` crate
 - `main/src/api/traits/{instance_pool,scaling_executor,scaling_signal}.rs`,
   `main/src/api/types/pool/handler_instance_pool.rs`,
-  `main/src/core/pool/handler_instance_pool.rs`, `main/src/api/types/scaling/**`
-  → new `swe-edge-loadbalancer-autoscale` crate
+  `main/src/core/pool/handler_instance_pool.rs`, `main/src/api/types/scaling/**`,
+  `main/src/api/types/identity/handler_id.rs`, and a new local `AutoscaleError`
+  (`InvalidConfig`) → new `swe-edge-loadbalancer-autoscale` crate
 - `main/src/api/traits/ingress_load_balancer.rs`, `main/src/api/types/ingress/**`,
-  `main/src/core/ingress/**` → new `swe-edge-loadbalancer-ingress` crate
+  `main/src/core/ingress/**`, `main/src/api/types/identity/node_id.rs`, and a new
+  local `IngressError` (`InvalidConfig`) → new `swe-edge-loadbalancer-ingress` crate
 - `main/src/api/traits/{pool_registry,tenant_registry}.rs`,
-  `main/src/api/types/registry/**`, `main/src/core/registry/**`
-  → new `swe-edge-loadbalancer-registry` crate
-- `main/src/api/types/identity/**`, `main/src/api/error/**`
-  → new `swe-edge-loadbalancer-common` crate
+  `main/src/api/types/registry/**`, `main/src/core/registry/**`, and a new local
+  `RegistryError` (`ParseFailed`) → new `swe-edge-loadbalancer-registry` crate
+- `main/src/api/error/loadbalancer_error.rs` → becomes the umbrella crate's
+  aggregating `LoadbalancerError` (wraps `EgressError`/`IngressError`/
+  `AutoscaleError`/`RegistryError`), not a separate crate
 - `main/src/saf/**` (the `LoadbalancerSvc` facade) → stays in the umbrella
   `swe-edge-loadbalancer` crate, retargeted to call into the five new crates
 - `tests/*.rs` (19 files) split by which subdomain each file exercises
-- `main/src/api/pool/inner/**` (the `BackendEntry`/`PoolInner` traits — already
-  cleanly `core`-only via their trait/private-struct split, no entanglement) moves
-  with `egress`
 
 ## What does not change
 
