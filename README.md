@@ -1,18 +1,33 @@
 # swe-edge-loadbalancer
 
-Load balancer contract for `swe-edge-egress-http`.
+Shared load balancer primitives for `swe-edge` — egress backend pools, ingress
+admission, in-process autoscaling, and tenant/handler registries.
 
-Provides `BackendPool`, `Strategy`, `Outcome`, `BackendHealth`, and supporting
-types for distributing outbound HTTP requests across a pool of backends.
+- **egress** (ADR-011) — `BackendPool`, `Strategy`, `Outcome`, `BackendHealth`, and
+  supporting types for distributing outbound HTTP requests across a pool of backends.
+- **ingress** (ADR-012) — `IngressLoadBalancer`, admission hints, node membership.
+- **autoscale** (ADR-013) — `InstancePool`, `ScalingSignal`, `ScalingExecutor` for
+  in-process concurrency gating and the runtime feedback loop.
+- **registry** — `PoolRegistry`, `TenantRegistry` for `(handler, tenant)` lookup.
+
+## Status
+
+Single crate today (`v0.3.0`). [`docs/adr/ADR-001`](docs/adr/ADR-001-subdomain-crate-split.md)
+proposes splitting it into subdomain crates (`-tenant`, `-egress`, `-autoscale`,
+`-ingress`, `-registry`, plus this crate as the umbrella facade) — tracked in
+[epic #2](https://github.com/sweengineeringlabs/edge-loadbalancer/issues/2). A
+further physical port/adapter split *within* a subdomain is explicitly deferred
+(see ADR-001 §2 and [issue #4](https://github.com/sweengineeringlabs/edge-loadbalancer/issues/4))
+until a real consumer's needs justify it — as of this ADR, nothing in the `edge`
+ecosystem depends on this crate yet.
 
 ## Features
 
-- **Round-robin** — uniform distribution across healthy backends.
-- **Weighted** — proportional distribution based on per-backend weight.
-- **Least-connections** — each request goes to the backend with the fewest
-  in-flight connections.
-- **Health tracking** — `report_outcome` transitions backends between
-  `Healthy`, `Degraded`, and `Dead` states.
+- **Round-robin / weighted / least-connections** strategies for egress backend
+  selection.
+- **Health tracking** — `report_outcome` transitions backends between `Healthy`,
+  `Degraded`, and `Dead` states.
+- **Concurrency-gated instance pools** with autoscale feedback (ADR-013).
 - **TOML config** — integrates with `swe-edge-configbuilder` via the
   `[loadbalancer]` section.
 
@@ -32,16 +47,16 @@ weight = 1
 ```
 
 ```rust
-use swe_edge_loadbalancer::{LoadbalancerConfig, build_backend_pool, select_backend, report_backend_outcome, Outcome};
+use swe_edge_loadbalancer::{LoadbalancerConfig, LoadbalancerSvc, Outcome};
 
 let config = LoadbalancerConfig::from_toml(include_str!("config/application.toml"))
     .expect("valid config");
-let pool = build_backend_pool(config).expect("pool must build");
+let pool = LoadbalancerSvc::build_pool(config).expect("pool must build");
 
 // Per-request
-let backend = select_backend(&pool).expect("a healthy backend must be available");
+let backend = LoadbalancerSvc::select(&pool).expect("a healthy backend must be available");
 // ... send the request to backend.url ...
-report_backend_outcome(&pool, &backend.id, Outcome::Success);
+LoadbalancerSvc::report_outcome(&pool, &backend.id, Outcome::Success);
 ```
 
 ## License

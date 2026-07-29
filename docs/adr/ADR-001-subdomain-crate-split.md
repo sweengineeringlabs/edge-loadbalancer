@@ -183,6 +183,31 @@ concrete type (`NoopIngressLoadBalancer`) is far simpler than `egress`'s
 `BackendPoolInstance`; worth re-checking for the E0116 pattern per-crate before
 assuming every subdomain hits the same wall.
 
+**Target physical layout, when a given subdomain's split is picked up:** two
+standalone workspaces, matching `edge-transport-grpc-ingress`'s ADR-004 exactly —
+no `Cargo.toml` at the shared parent level, each side gets its own nested
+`Cargo.toml` with its own empty `[workspace]` table:
+
+```
+scm/
+└── main/
+    ├── port/
+    │   └── <subdomain>/          own standalone workspace
+    │       └── Cargo.toml        [package] swe-edge-loadbalancer-<subdomain>
+    └── adapter/
+        └── <subdomain>/          own standalone workspace, separate from port's
+            └── Cargo.toml        [package] swe-edge-loadbalancer-<subdomain>-adapter
+```
+
+This repo does not have an `scm/` top-level layer today (its layout is flat —
+`main/src/...` at repo root), unlike the sibling repos this pattern is drawn from
+(`security/scm/`, `edge-a2ac/scm/`, `edge-transport-grpc-ingress/scm/`). Adopting
+this layout for any subdomain's eventual port/adapter split means introducing
+`scm/` as this repo's top-level layer at that point, to stay consistent with the
+rest of the org rather than inventing a one-off shape. Recording the target shape
+now, in advance of #4 actually being picked up, so whoever implements it later
+doesn't have to re-derive it — this does not change the deferral decision in §2.
+
 ## Options considered
 
 1. **Subdomain split + port/adapter split together now.** Not chosen — compounds the
