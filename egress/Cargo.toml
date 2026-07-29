@@ -1,0 +1,35 @@
+[workspace]
+
+[package]
+name = "swe-edge-loadbalancer-egress"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.82"
+authors = ["SWE Engineering Labs"]
+repository = "https://github.com/sweengineeringlabs/edge-loadbalancer"
+description = "Egress backend-pool subdomain for swe-edge-loadbalancer — BackendPool, BackendPoolInstance, Strategy, Outcome, EgressError (ADR-011)"
+keywords = ["loadbalancer", "backend", "pool", "egress", "swe"]
+categories = ["network-programming"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type = "backend_pool"
+
+[lib]
+path = "main/src/lib.rs"
+
+[dependencies]
+swe-edge-configbuilder = { git = "https://github.com/sweengineeringlabs/edge-configbuilder.git", tag = "v0.3.0" }
+thiserror = "2"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+parking_lot = "0.12"
+
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
