@@ -2,8 +2,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use swe_edge_loadbalancer::{
-    BackendConfig, BackendId, LoadbalancerConfig, Outcome, Strategy,
-    build_backend_pool, report_backend_outcome, select_backend,
+    BackendConfig, BackendId, LoadbalancerConfig, LoadbalancerSvc, Outcome, Strategy,
 };
 
 fn two_backend_rr_config() -> LoadbalancerConfig {
@@ -18,9 +17,9 @@ fn two_backend_rr_config() -> LoadbalancerConfig {
 
 #[test]
 fn test_backend_pool_round_robin_selects_backends_in_order() {
-    let pool = build_backend_pool(two_backend_rr_config()).expect("pool must build");
-    let first = select_backend(&pool).expect("first select must succeed");
-    let second = select_backend(&pool).expect("second select must succeed");
+    let pool = LoadbalancerSvc::build_pool(two_backend_rr_config()).expect("pool must build");
+    let first = LoadbalancerSvc::select(&pool).expect("first select must succeed");
+    let second = LoadbalancerSvc::select(&pool).expect("second select must succeed");
     // Round-robin must cycle: first != second
     assert_ne!(
         first.url, second.url,
@@ -30,10 +29,10 @@ fn test_backend_pool_round_robin_selects_backends_in_order() {
 
 #[test]
 fn test_backend_pool_round_robin_cycles_back_to_first() {
-    let pool = build_backend_pool(two_backend_rr_config()).expect("pool must build");
-    let b0 = select_backend(&pool).expect("select 0");
-    let b1 = select_backend(&pool).expect("select 1");
-    let b2 = select_backend(&pool).expect("select 2");
+    let pool = LoadbalancerSvc::build_pool(two_backend_rr_config()).expect("pool must build");
+    let b0 = LoadbalancerSvc::select(&pool).expect("select 0");
+    let b1 = LoadbalancerSvc::select(&pool).expect("select 1");
+    let b2 = LoadbalancerSvc::select(&pool).expect("select 2");
     // The third pick must equal the first (2-backend pool cycles every 2 picks).
     assert_eq!(b0.url, b2.url, "round-robin must cycle: b0 == b2");
     assert_ne!(b0.url, b1.url, "round-robin must alternate: b0 != b1");
@@ -41,13 +40,13 @@ fn test_backend_pool_round_robin_cycles_back_to_first() {
 
 #[test]
 fn test_backend_pool_degraded_backend_excluded_from_selection() {
-    let pool = build_backend_pool(two_backend_rr_config()).expect("pool must build");
+    let pool = LoadbalancerSvc::build_pool(two_backend_rr_config()).expect("pool must build");
     let id1 = BackendId::new("https://api-1.internal");
     // Degrade the first backend
-    report_backend_outcome(&pool, &id1, Outcome::Failure { reason: "err".to_string() });
+    LoadbalancerSvc::report_outcome(&pool, &id1, Outcome::Failure { reason: "err".to_string() });
     // All subsequent selections must return only api-2
     for _ in 0..5 {
-        let b = select_backend(&pool).expect("must select the healthy backend");
+        let b = LoadbalancerSvc::select(&pool).expect("must select the healthy backend");
         assert_eq!(
             b.url, "https://api-2.internal",
             "degraded backend must never be selected"
@@ -57,12 +56,12 @@ fn test_backend_pool_degraded_backend_excluded_from_selection() {
 
 #[test]
 fn test_backend_pool_all_degraded_returns_no_healthy_backends_error() {
-    let pool = build_backend_pool(two_backend_rr_config()).expect("pool must build");
+    let pool = LoadbalancerSvc::build_pool(two_backend_rr_config()).expect("pool must build");
     let id1 = BackendId::new("https://api-1.internal");
     let id2 = BackendId::new("https://api-2.internal");
-    report_backend_outcome(&pool, &id1, Outcome::CircuitOpen);
-    report_backend_outcome(&pool, &id2, Outcome::CircuitOpen);
-    let err = select_backend(&pool).unwrap_err();
+    LoadbalancerSvc::report_outcome(&pool, &id1, Outcome::CircuitOpen);
+    LoadbalancerSvc::report_outcome(&pool, &id2, Outcome::CircuitOpen);
+    let err = LoadbalancerSvc::select(&pool).unwrap_err();
     assert!(
         matches!(err, swe_edge_loadbalancer::LoadbalancerError::NoHealthyBackends),
         "all backends degraded must return NoHealthyBackends: {err:?}"
@@ -71,15 +70,15 @@ fn test_backend_pool_all_degraded_returns_no_healthy_backends_error() {
 
 #[test]
 fn test_backend_pool_report_outcome_success_restores_healthy() {
-    let pool = build_backend_pool(two_backend_rr_config()).expect("pool must build");
+    let pool = LoadbalancerSvc::build_pool(two_backend_rr_config()).expect("pool must build");
     let id1 = BackendId::new("https://api-1.internal");
     let id2 = BackendId::new("https://api-2.internal");
     // Degrade both
-    report_backend_outcome(&pool, &id1, Outcome::CircuitOpen);
-    report_backend_outcome(&pool, &id2, Outcome::CircuitOpen);
+    LoadbalancerSvc::report_outcome(&pool, &id1, Outcome::CircuitOpen);
+    LoadbalancerSvc::report_outcome(&pool, &id2, Outcome::CircuitOpen);
     // Restore one
-    report_backend_outcome(&pool, &id1, Outcome::Success);
-    let b = select_backend(&pool).expect("restored backend must be selectable");
+    LoadbalancerSvc::report_outcome(&pool, &id1, Outcome::Success);
+    let b = LoadbalancerSvc::select(&pool).expect("restored backend must be selectable");
     assert_eq!(b.url, "https://api-1.internal");
 }
 
@@ -89,7 +88,7 @@ fn test_backend_pool_empty_config_returns_invalid_config_error() {
         strategy: Strategy::RoundRobin,
         backends: vec![],
     };
-    let err = build_backend_pool(config).unwrap_err();
+    let err = LoadbalancerSvc::build_pool(config).unwrap_err();
     assert!(
         matches!(err, swe_edge_loadbalancer::LoadbalancerError::InvalidConfig(_)),
         "empty backends must fail with InvalidConfig: {err:?}"
@@ -107,9 +106,9 @@ fn test_backend_pool_weighted_strategy_distributes_by_weight() {
             BackendConfig { url: "https://light.internal".to_string(), weight: 1 },
         ],
     };
-    let pool = build_backend_pool(config).expect("pool must build");
+    let pool = LoadbalancerSvc::build_pool(config).expect("pool must build");
     let urls: Vec<String> = (0..4)
-        .map(|_| select_backend(&pool).expect("must select").url)
+        .map(|_| LoadbalancerSvc::select(&pool).expect("must select").url)
         .collect();
     let heavy_count = urls.iter().filter(|u| u.as_str() == "https://heavy.internal").count();
     let light_count = urls.iter().filter(|u| u.as_str() == "https://light.internal").count();

@@ -9,8 +9,7 @@
 //! @covers: BackendEntry
 
 use swe_edge_loadbalancer::{
-    build_backend_pool, report_backend_outcome, select_backend, BackendHealth, LoadbalancerConfig,
-    LoadbalancerError, Outcome, Strategy,
+    BackendHealth, LoadbalancerConfig, LoadbalancerError, LoadbalancerSvc, Outcome, Strategy,
 };
 
 fn config_with_two_backends() -> LoadbalancerConfig {
@@ -30,11 +29,11 @@ fn test_backend_entry_least_connections_prefers_entry_with_zero_connections() {
     // With LeastConnections strategy, both entries start at 0 connections, so
     // successive selects may return either backend. The important invariant is
     // that select never errors when healthy entries exist.
-    let pool = build_backend_pool(config_with_two_backends())
+    let pool = LoadbalancerSvc::build_pool(config_with_two_backends())
         .expect("pool must build with valid config");
-    let first = select_backend(&pool);
+    let first = LoadbalancerSvc::select(&pool);
     assert!(first.is_ok(), "first selection must succeed");
-    let second = select_backend(&pool);
+    let second = LoadbalancerSvc::select(&pool);
     assert!(second.is_ok(), "second selection must succeed");
 }
 
@@ -49,11 +48,11 @@ fn test_backend_entry_health_degrades_after_failure_outcome() {
             BackendConfig { url: "https://be-b.internal".to_string(), weight: 1 },
         ],
     };
-    let pool = build_backend_pool(config).expect("pool must build");
-    let backend = select_backend(&pool).expect("initial select must succeed");
+    let pool = LoadbalancerSvc::build_pool(config).expect("pool must build");
+    let backend = LoadbalancerSvc::select(&pool).expect("initial select must succeed");
 
     // Mark the selected backend as failed.
-    report_backend_outcome(
+    LoadbalancerSvc::report_outcome(
         &pool,
         &backend.id,
         Outcome::Failure { reason: "timeout".to_string() },
@@ -63,7 +62,7 @@ fn test_backend_entry_health_degrades_after_failure_outcome() {
     // the other backend is still selectable. Simply verify select still works
     // (pool does not error when at least one healthy backend remains).
     assert!(
-        select_backend(&pool).is_ok(),
+        LoadbalancerSvc::select(&pool).is_ok(),
         "pool with one healthy backend must still select successfully"
     );
 }
@@ -79,19 +78,19 @@ fn test_backend_entry_health_recovers_after_success_outcome() {
             weight: 1,
         }],
     };
-    let pool = build_backend_pool(config).expect("pool must build");
-    let backend = select_backend(&pool).expect("initial select must succeed");
+    let pool = LoadbalancerSvc::build_pool(config).expect("pool must build");
+    let backend = LoadbalancerSvc::select(&pool).expect("initial select must succeed");
 
     // Degrade, then recover.
-    report_backend_outcome(
+    LoadbalancerSvc::report_outcome(
         &pool,
         &backend.id,
         Outcome::Failure { reason: "connection refused".to_string() },
     );
-    report_backend_outcome(&pool, &backend.id, Outcome::Success);
+    LoadbalancerSvc::report_outcome(&pool, &backend.id, Outcome::Success);
 
     // After recovery the single backend should be selectable again.
-    let result = select_backend(&pool);
+    let result = LoadbalancerSvc::select(&pool);
     assert!(result.is_ok(), "recovered backend must be selectable");
     assert_eq!(
         result.unwrap().health,
@@ -111,13 +110,13 @@ fn test_backend_entry_all_degraded_returns_no_healthy_backends_error() {
             weight: 1,
         }],
     };
-    let pool = build_backend_pool(config).expect("pool must build");
-    let backend = select_backend(&pool).expect("initial select must succeed");
+    let pool = LoadbalancerSvc::build_pool(config).expect("pool must build");
+    let backend = LoadbalancerSvc::select(&pool).expect("initial select must succeed");
 
     // Mark the only backend as circuit-open (Degraded health).
-    report_backend_outcome(&pool, &backend.id, Outcome::CircuitOpen);
+    LoadbalancerSvc::report_outcome(&pool, &backend.id, Outcome::CircuitOpen);
 
-    let err = select_backend(&pool).unwrap_err();
+    let err = LoadbalancerSvc::select(&pool).unwrap_err();
     assert!(
         matches!(err, LoadbalancerError::NoHealthyBackends),
         "all-degraded pool must return NoHealthyBackends, got: {err:?}"

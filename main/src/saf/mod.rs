@@ -29,15 +29,3 @@ pub use crate::api::types::pool::{BackendPoolInstance, HandlerInstancePool};
 pub use crate::api::types::registry::{InMemoryPoolRegistry, TomlTenantRegistry};
 pub use crate::api::types::scaling::{PoolSnapshot, ScaleOutHint, ScalingDecision};
 pub use crate::api::types::strategy::Strategy;
-
-// SAF standalone functions — all take/return api/ types only
-pub use loadbalancer_svc::build_backend_pool;
-pub use loadbalancer_svc::build_handler_pool;
-pub use loadbalancer_svc::build_noop_ingress_lb;
-pub use loadbalancer_svc::build_pool_registry;
-pub use loadbalancer_svc::build_tenant_registry;
-pub use loadbalancer_svc::pool_backend_count;
-pub use loadbalancer_svc::register_handler_pool;
-pub use loadbalancer_svc::report_backend_outcome;
-pub use loadbalancer_svc::select_backend;
-pub use loadbalancer_svc::validate_loadbalancer_config;

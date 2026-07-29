@@ -5,6 +5,28 @@ All notable changes to `swe-edge-loadbalancer` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Breaking:** removed the 10 public SAF free functions from `saf/loadbalancer_svc.rs`
+  in favor of associated methods on `LoadbalancerSvc`, closing out SEA rule 191
+  ("SEA layer files must not contain free-standing fn") for the `saf/` layer
+  (tracked in issue #1 / edge#249). Migration:
+
+  | Old free function | New call |
+  |---|---|
+  | `build_backend_pool(config)` | `LoadbalancerSvc::build_pool(config)` |
+  | `validate_loadbalancer_config(config)` | `LoadbalancerSvc::validate_config(config)` |
+  | `select_backend(pool)` | `LoadbalancerSvc::select(pool)` |
+  | `report_backend_outcome(pool, id, outcome)` | `LoadbalancerSvc::report_outcome(pool, id, outcome)` |
+  | `pool_backend_count(pool)` | `LoadbalancerSvc::backend_count(pool)` |
+  | `build_noop_ingress_lb()` | `LoadbalancerSvc::build_noop_ingress_lb()` |
+  | `build_handler_pool(handler_id, tenant_id, cap)` | `LoadbalancerSvc::build_handler_pool(handler_id, tenant_id, cap)` |
+  | `build_pool_registry()` | `LoadbalancerSvc::build_pool_registry()` |
+  | `register_handler_pool(registry, handler_id, tenant_id, pool)` | `LoadbalancerSvc::register_handler_pool(registry, handler_id, tenant_id, pool)` |
+  | `build_tenant_registry(toml_str)` | `LoadbalancerSvc::build_tenant_registry(toml_str)` |
+
 ## [0.2.0] - 2026-06-10
 
 ### Added

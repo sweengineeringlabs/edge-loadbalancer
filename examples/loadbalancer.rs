@@ -1,8 +1,7 @@
 //! Minimal example: build a pool, select a backend, report an outcome.
 
 use swe_edge_loadbalancer::{
-    BackendConfig, LoadbalancerConfig, Outcome, Strategy,
-    build_backend_pool, report_backend_outcome, select_backend,
+    BackendConfig, LoadbalancerConfig, LoadbalancerSvc, Outcome, Strategy,
 };
 
 fn main() {
@@ -14,11 +13,11 @@ fn main() {
         ],
     };
 
-    let pool = build_backend_pool(config).expect("pool must build from valid config");
+    let pool = LoadbalancerSvc::build_pool(config).expect("pool must build from valid config");
 
     for i in 0..4 {
-        let backend = select_backend(&pool).expect("a healthy backend must be available");
+        let backend = LoadbalancerSvc::select(&pool).expect("a healthy backend must be available");
         println!("request {i}: selected backend {}", backend.url);
-        report_backend_outcome(&pool, &backend.id, Outcome::Success);
+        LoadbalancerSvc::report_outcome(&pool, &backend.id, Outcome::Success);
     }
 }

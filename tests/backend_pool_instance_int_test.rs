@@ -2,7 +2,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use swe_edge_loadbalancer::{
-    BackendConfig, BackendPoolInstance, LoadbalancerConfig, Strategy, build_backend_pool,
+    BackendConfig, BackendPoolInstance, LoadbalancerConfig, LoadbalancerSvc, Strategy,
 };
 
 fn single_backend_config() -> LoadbalancerConfig {
@@ -18,7 +18,7 @@ fn single_backend_config() -> LoadbalancerConfig {
 #[test]
 fn test_backend_pool_instance_struct_is_debug_printable() {
     let pool: BackendPoolInstance =
-        build_backend_pool(single_backend_config()).expect("pool must build");
+        LoadbalancerSvc::build_pool(single_backend_config()).expect("pool must build");
     let dbg = format!("{pool:?}");
     assert!(!dbg.is_empty(), "Debug impl must produce non-empty output");
     assert!(
@@ -29,7 +29,7 @@ fn test_backend_pool_instance_struct_is_debug_printable() {
 
 #[test]
 fn test_backend_pool_instance_struct_builds_from_valid_config() {
-    let result = build_backend_pool(single_backend_config());
+    let result = LoadbalancerSvc::build_pool(single_backend_config());
     assert!(
         result.is_ok(),
         "BackendPoolInstance must build from valid config"
@@ -42,7 +42,7 @@ fn test_backend_pool_instance_struct_build_fails_with_empty_backends() {
         strategy: Strategy::RoundRobin,
         backends: vec![],
     };
-    let err = build_backend_pool(config).unwrap_err();
+    let err = LoadbalancerSvc::build_pool(config).unwrap_err();
     assert!(
         matches!(err, swe_edge_loadbalancer::LoadbalancerError::InvalidConfig(_)),
         "empty backends must return InvalidConfig: {err:?}"
