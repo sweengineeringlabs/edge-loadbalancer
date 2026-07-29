@@ -229,6 +229,56 @@ assuming every subdomain hits the same wall.
 - Trait/type shapes themselves — this is a structural move, not a contract redesign
 - `api/`/`core/`/`saf/` layering *within* each new crate — unchanged, per Decision §2
 
+## Relationship guidance applied
+
+[`edge-a2ac`'s `scm/README.md`](https://github.com/sweengineeringlabs/edge-a2ac/blob/main/scm/README.md)
+documents a "no island" constraint for its own ports split (every package needs a real,
+compiler-enforced connection to at least one other, not merely a documented one) and
+three concrete Rust patterns for expressing such a connection, chosen deliberately per
+case rather than defaulting to one:
+
+1. **Supertrait bound (IS-A)** — reserved for genuine "this type is a specialization
+   of that trait" relationships.
+2. **Trait-object field/return (USES-A)** — a `&dyn Trait` or `Arc<dyn Trait>`,
+   chosen *over* a supertrait bound when the relationship is "needs a collaborator,"
+   to keep each trait single-responsibility.
+3. **Value-type composition** — a struct/method holds or takes another crate's own
+   value type by field/parameter, not a locally-redeclared equivalent shape.
+
+Checked this crate's planned cross-crate edges against that taxonomy — all are already
+real, compiler-enforced connections, no island, and no case where a supertrait bound
+would have been used but wasn't (i.e. no missed IS-A relationship):
+
+| Edge | Pattern | Real code |
+|---|---|---|
+| `-autoscale` → `-tenant` | Value-type composition | `ScalingExecutor::scale_up(&self, handler_id: &HandlerId, tenant_id: Option<&TenantId>, ...)`, `HandlerInstancePool.tenant_id: Option<TenantId>` |
+| `-ingress` → `-tenant` | Value-type composition | `IngressLoadBalancer::on_accept(&self, tenant_id: Option<&TenantId>)` |
+| `-registry` → `-tenant` | Value-type composition | `TenantRegistry::tier_of(&self, tenant_id: &TenantId)`, `PoolRegistry::get(..., tenant_id: Option<&TenantId>)` |
+| `-registry` → `-autoscale` (trait) | Trait-object return (USES-A, not IS-A — `InMemoryPoolRegistry` is not itself an `InstancePool`) | `PoolRegistry::get(...) -> Option<Arc<dyn InstancePool>>` |
+| `-registry` → `-autoscale` (type) | Value-type composition | `PoolRegistry::get(&self, handler_id: &HandlerId, ...)` |
+| umbrella → all five | Composition root (same role as `a2ac-handshake-port` in the precedent) | `LoadbalancerSvc`'s ten associated methods |
+
+No supertrait bound appears in this design, and that's correct, not an oversight —
+none of the five subdomains' traits are a genuine specialization of another
+(`InMemoryPoolRegistry` *uses* an `InstancePool`, it isn't one).
+
+One aspirational mismatch caught while checking: `ScalingSignal`'s own doc comment
+claims it's "implemented by instance pools (in-process side, ADR-013) **and backend
+pools (egress side, ADR-011)**" — but grepping the actual code, only
+`HandlerInstancePool` (`autoscale`) implements it today; `BackendPoolInstance`
+(`egress`) does not. Same class of trap as the original `-common` mistake (doc/comment
+claims vs. real code) — verified `ScalingSignal` is autoscale-exclusive in the current
+codebase, so no edge from `-egress` to `-autoscale` is needed *now*. If
+`BackendPoolInstance` ever gains that impl, `-egress` would need to depend on
+`-autoscale` for the trait at that point — noted here so it isn't a surprise later.
+
+Per the precedent's own methodology note ("the real table supersedes that issue's
+pre-implementation table where the two differ"): the table above is pre-implementation,
+same as `edge-a2ac`'s issue #3 was before its ports were actually built. Expect it to
+need correction once #5–#10 land — re-verify against real `Cargo.toml`
+`[dependencies]` and real trait signatures at that point, the same way this ADR
+verified against the *current* single-crate code rather than trusting doc comments.
+
 ## Versioning & rollout
 
 Breaking (crate boundaries change; anyone who was depending on internal module paths
