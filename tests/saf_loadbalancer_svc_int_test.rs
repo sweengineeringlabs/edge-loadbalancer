@@ -34,7 +34,12 @@ fn test_build_backend_pool_fn_empty_backends_returns_invalid_config_error() {
     };
     let err = LoadbalancerSvc::build_pool(config).unwrap_err();
     assert!(
-        matches!(err, swe_edge_loadbalancer::LoadbalancerError::InvalidConfig(_)),
+        matches!(
+            err,
+            swe_edge_loadbalancer::LoadbalancerError::Egress(
+                swe_edge_loadbalancer::EgressError::InvalidConfig(_)
+            )
+        ),
         "empty backends must be InvalidConfig: {err:?}"
     );
 }
@@ -82,7 +87,9 @@ fn test_select_backend_fn_returns_error_when_all_backends_degraded() {
     let err = LoadbalancerSvc::select(&pool).unwrap_err();
     assert!(matches!(
         err,
-        swe_edge_loadbalancer::LoadbalancerError::NoHealthyBackends
+        swe_edge_loadbalancer::LoadbalancerError::Egress(
+            swe_edge_loadbalancer::EgressError::NoHealthyBackends
+        )
     ));
 }
 

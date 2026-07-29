@@ -55,7 +55,12 @@ fn test_loadbalancer_svc_struct_report_outcome_degrades_backend() {
     LoadbalancerSvc::report_outcome(&pool, &id2, Outcome::CircuitOpen);
     let err = LoadbalancerSvc::select(&pool).unwrap_err();
     assert!(
-        matches!(err, swe_edge_loadbalancer::LoadbalancerError::NoHealthyBackends),
+        matches!(
+            err,
+            swe_edge_loadbalancer::LoadbalancerError::Egress(
+                swe_edge_loadbalancer::EgressError::NoHealthyBackends
+            )
+        ),
         "all degraded must return NoHealthyBackends: {err:?}"
     );
 }

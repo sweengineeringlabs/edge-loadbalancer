@@ -1,4 +1,5 @@
 //! Minimal example: build a pool, select a backend, report an outcome.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use swe_edge_loadbalancer::{
     BackendConfig, LoadbalancerConfig, LoadbalancerSvc, Outcome, Strategy,

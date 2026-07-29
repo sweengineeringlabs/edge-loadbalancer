@@ -2,28 +2,35 @@
 
 use std::sync::Arc;
 
-use crate::api::error::LoadbalancerError;
-use crate::api::traits::{BackendPool, InstancePool, Validator};
-use crate::api::types::backend::{Backend, BackendId};
-use crate::api::types::config::LoadbalancerConfig;
-use crate::api::types::identity::{HandlerId, TenantId};
-use crate::api::types::ingress::NoopIngressLoadBalancer;
-use crate::api::types::loadbalancer_svc::LoadbalancerSvc;
-use crate::api::types::outcome::Outcome;
-use crate::api::types::pool::{BackendPoolInstance, HandlerInstancePool};
-use crate::api::types::registry::{InMemoryPoolRegistry, TomlTenantRegistry};
+use swe_edge_loadbalancer_autoscale::{AutoscaleSvc, HandlerId, HandlerInstancePool, InstancePool};
+use swe_edge_loadbalancer_egress::{
+    Backend, BackendId, BackendPool, BackendPoolInstance, LoadbalancerConfig, Outcome, Validator,
+};
+use swe_edge_loadbalancer_ingress::NoopIngressLoadBalancer;
+use swe_edge_loadbalancer_registry::{InMemoryPoolRegistry, RegistrySvc, TomlTenantRegistry};
+use swe_edge_loadbalancer_tenant::TenantId;
+
+use crate::error::LoadbalancerError;
+
+/// Zero-size service struct whose associated functions serve as the public
+/// factory entry points for this crate.
+///
+/// Delegates into each of the five subdomain crates' own constructors
+/// (`swe-edge-loadbalancer-{egress,autoscale,ingress,registry}`) per ADR-001
+/// — this crate no longer holds any `core/` implementation of its own.
+pub struct LoadbalancerSvc;
 
 impl LoadbalancerSvc {
     /// Build a [`BackendPoolInstance`] from a [`LoadbalancerConfig`].
     ///
-    /// Validates the config first; returns `Err(LoadbalancerError::InvalidConfig)`
+    /// Validates the config first; returns `Err(LoadbalancerError::Egress(EgressError::InvalidConfig(_)))`
     /// if any backend has an empty URL or zero weight, or the backend list is empty.
     ///
     /// # Errors
     ///
-    /// - [`LoadbalancerError::InvalidConfig`] — validation failed.
+    /// - [`LoadbalancerError::Egress`] — validation failed.
     pub fn build_pool(config: LoadbalancerConfig) -> Result<BackendPoolInstance, LoadbalancerError> {
-        BackendPoolInstance::build(config)
+        Ok(BackendPoolInstance::build(config)?)
     }
 
     /// Validate a [`LoadbalancerConfig`] without constructing a pool.
@@ -33,7 +40,7 @@ impl LoadbalancerSvc {
 
     /// Select a healthy backend from an existing pool.
     pub fn select(pool: &BackendPoolInstance) -> Result<Backend, LoadbalancerError> {
-        pool.select()
+        Ok(pool.select()?)
     }
 
     /// Record an outcome against a backend, updating its health state.
@@ -57,18 +64,18 @@ impl LoadbalancerSvc {
     ///
     /// # Errors
     ///
-    /// Returns [`LoadbalancerError::InvalidConfig`] when `concurrency_cap` is 0.
+    /// Returns [`LoadbalancerError::Autoscale`] when `concurrency_cap` is 0.
     pub fn build_handler_pool(
         handler_id: HandlerId,
         tenant_id: Option<TenantId>,
         concurrency_cap: usize,
     ) -> Result<HandlerInstancePool, LoadbalancerError> {
-        HandlerInstancePool::build(handler_id, tenant_id, concurrency_cap)
+        Ok(AutoscaleSvc::build_handler_pool(handler_id, tenant_id, concurrency_cap)?)
     }
 
     /// Build an empty [`InMemoryPoolRegistry`].
     pub fn build_pool_registry() -> InMemoryPoolRegistry {
-        InMemoryPoolRegistry::build()
+        RegistrySvc::build_pool_registry()
     }
 
     /// Register a pool in an existing [`InMemoryPoolRegistry`].
@@ -80,7 +87,7 @@ impl LoadbalancerSvc {
         tenant_id: Option<&TenantId>,
         pool: Arc<dyn InstancePool>,
     ) {
-        registry.register(handler_id, tenant_id, pool);
+        RegistrySvc::register_handler_pool(registry, handler_id, tenant_id, pool);
     }
 
     /// Parse a TOML document into a [`TomlTenantRegistry`].
@@ -90,9 +97,9 @@ impl LoadbalancerSvc {
     ///
     /// # Errors
     ///
-    /// Returns [`LoadbalancerError::ParseFailed`] when the document is invalid
+    /// Returns [`LoadbalancerError::Registry`] when the document is invalid
     /// TOML or the section has the wrong shape.
     pub fn build_tenant_registry(toml_str: &str) -> Result<TomlTenantRegistry, LoadbalancerError> {
-        TomlTenantRegistry::build(toml_str)
+        Ok(RegistrySvc::build_tenant_registry(toml_str)?)
     }
 }
