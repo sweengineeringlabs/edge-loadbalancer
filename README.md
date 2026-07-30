@@ -12,14 +12,14 @@ admission, in-process autoscaling, and tenant/handler registries.
 
 ## Status
 
-Single crate today (`v0.3.0`). [`docs/adr/ADR-001`](docs/adr/ADR-001-subdomain-crate-split.md)
-proposes splitting it into subdomain crates (`-tenant`, `-egress`, `-autoscale`,
-`-ingress`, `-registry`, plus this crate as the umbrella facade) — tracked in
-[epic #2](https://github.com/sweengineeringlabs/edge-loadbalancer/issues/2). A
-further physical port/adapter split *within* a subdomain is explicitly deferred
-(see ADR-001 §2 and [issue #4](https://github.com/sweengineeringlabs/edge-loadbalancer/issues/4))
-until a real consumer's needs justify it — as of this ADR, nothing in the `edge`
-ecosystem depends on this crate yet.
+Six crates as of `v0.4.0`, per [`docs/adr/ADR-001`](docs/adr/ADR-001-subdomain-crate-split.md):
+`-tenant`, `-egress`, `-autoscale`, `-ingress`, `-registry`, plus this crate as the
+umbrella facade (`LoadbalancerSvc` — unchanged public API, delegating into the five).
+A further physical port/adapter split *within* a subdomain crate is a separate,
+still-open question — see [`docs/adr/ADR-002`](docs/adr/ADR-002-port-adapter.md) and
+[issue #4](https://github.com/sweengineeringlabs/edge-loadbalancer/issues/4) — deferred
+until a real consumer's needs justify it; as of ADR-002, nothing in the `edge`
+ecosystem depends on any of these crates yet.
 
 ## Features
 
