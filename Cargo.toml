@@ -1,6 +1,6 @@
 [package]
 name = "swe-edge-loadbalancer"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 rust-version = "1.82"
@@ -26,7 +26,7 @@ swe-edge-loadbalancer-registry = { path = "registry" }
 thiserror = "2"
 
 [dev-dependencies]
-swe-edge-configbuilder = { git = "https://github.com/sweengineeringlabs/edge-configbuilder.git", tag = "v0.3.0" }
+swe-edge-configbuilder = { git = "https://github.com/sweengineeringlabs/edge-configbuilder.git", tag = "v0.4.2" }
 tokio = { version = "1.52", features = ["macros", "rt", "rt-multi-thread"] }
 
 [lints.rust]
