@@ -1,6 +1,6 @@
 [package]
 name = "swe-edge-loadbalancer"
-version = "0.3.0"
+version = "0.4.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 rust-version = "1.82"
@@ -18,14 +18,15 @@ service_type = "backend_pool"
 path = "main/src/lib.rs"
 
 [dependencies]
-swe-edge-configbuilder = { git = "https://github.com/sweengineeringlabs/edge-configbuilder.git", tag = "v0.3.0" }
+swe-edge-loadbalancer-tenant = { path = "tenant" }
+swe-edge-loadbalancer-egress = { path = "egress" }
+swe-edge-loadbalancer-autoscale = { path = "autoscale" }
+swe-edge-loadbalancer-ingress = { path = "ingress" }
+swe-edge-loadbalancer-registry = { path = "registry" }
 thiserror = "2"
-serde = { version = "1.0", features = ["derive"] }
-toml = "0.8"
-parking_lot = "0.12"
-tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
+swe-edge-configbuilder = { git = "https://github.com/sweengineeringlabs/edge-configbuilder.git", tag = "v0.4.2" }
 tokio = { version = "1.52", features = ["macros", "rt", "rt-multi-thread"] }
 
 [lints.rust]

@@ -1,0 +1,31 @@
+[workspace]
+
+[package]
+name = "swe-edge-loadbalancer-tenant"
+version = "0.4.1"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.82"
+authors = ["SWE Engineering Labs"]
+repository = "https://github.com/sweengineeringlabs/edge-loadbalancer"
+description = "TenantId — shared-kernel tenant identity newtype for swe-edge-loadbalancer subdomain crates (ADR-001)"
+keywords = ["loadbalancer", "tenant", "identity", "swe"]
+categories = ["network-programming"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type = "identity"
+
+[lib]
+path = "main/src/lib.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

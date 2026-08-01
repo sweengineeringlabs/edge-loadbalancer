@@ -5,6 +5,73 @@ All notable changes to `swe-edge-loadbalancer` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-08-01
+
+### Changed
+
+- Bumped `swe-edge-configbuilder` from `v0.3.0` to `v0.4.2` in `egress` (dependency)
+  and in the umbrella crate (dev-dependency).
+
+## [0.4.0] - 2026-07-29
+
+### Changed
+
+- **Breaking:** split `swe-edge-loadbalancer` along its subdomain boundaries into
+  five new crates plus this umbrella crate, per ADR-001
+  (`docs/adr/ADR-001-subdomain-crate-split.md`) — tracked in epic #2 / issue #3.
+  Anyone depending on this crate's internal module paths (`swe_edge_loadbalancer::api::...`,
+  `swe_edge_loadbalancer::core::...`) rather than its public re-exports breaks; no such
+  consumer exists today (confirmed in issue #1 / edge#407). The umbrella crate keeps its
+  name and its `LoadbalancerSvc` facade's ten associated methods unchanged, so existing
+  consumers who depend on `swe-edge-loadbalancer` alone are unaffected. Migration mapping
+  (old module path in this crate → new crate):
+
+  | Old module path (`swe-edge-loadbalancer`) | New crate |
+  |---|---|
+  | `api::types::identity::TenantId` | `swe-edge-loadbalancer-tenant` (`TenantId`) |
+  | `api::traits::{BackendPool, Validator}`, `api::types::pool::BackendPoolInstance`, `api::types::strategy::Strategy`, `api::types::outcome::Outcome`, `api::types::backend::{Backend, BackendHealth, BackendId}`, `api::types::config::{LoadbalancerConfig, BackendConfig}`, `api::types::application_config_builder::ApplicationConfigBuilder`, `api::pool::inner::{BackendEntry, PoolInner}` | `swe-edge-loadbalancer-egress` (own `EgressError`, ADR-011) |
+  | `api::traits::{InstancePool, ScalingExecutor, ScalingSignal}`, `api::types::pool::HandlerInstancePool`, `api::types::scaling::{PoolSnapshot, ScaleOutHint, ScalingDecision}`, `api::types::identity::HandlerId` | `swe-edge-loadbalancer-autoscale` (own `AutoscaleError`, ADR-013) |
+  | `api::traits::IngressLoadBalancer`, `api::types::ingress::{LoadBalancerHint, NoopIngressLoadBalancer}`, `api::types::identity::NodeId` | `swe-edge-loadbalancer-ingress` (own `IngressError`, ADR-012) |
+  | `api::traits::{PoolRegistry, TenantRegistry}`, `api::types::registry::{InMemoryPoolRegistry, TomlTenantRegistry}` | `swe-edge-loadbalancer-registry` (own `RegistryError`) |
+  | `api::error::LoadbalancerError` | stays in this crate — now an aggregating error with four variants (`Egress(EgressError)`/`Ingress(IngressError)`/`Autoscale(AutoscaleError)`/`Registry(RegistryError)`, each with a `From` impl and `#[error(transparent)]` `Display`/`std::error::Error` delegation to the wrapped error), so `LoadbalancerSvc`'s public signatures keep returning `swe_edge_loadbalancer::LoadbalancerError` unchanged (issue #10) |
+  | `saf::loadbalancer_svc::LoadbalancerSvc` | stays in this crate; its ten associated methods now delegate into each subdomain crate's own constructors instead of local `core/` code (issue #10) |
+
+  Each new crate is independently depended-on today: a consumer that only needs,
+  e.g., `ingress` + `registry` can take those two crates directly instead of
+  pulling in `egress`/`autoscale`, and gets that subdomain's own scoped error
+  type (`IngressError`/`RegistryError`) rather than the umbrella's error type.
+  This crate's own `main/src/api/` and `main/src/core/` are now gone entirely
+  — only the `saf/` facade, the aggregating `LoadbalancerError`, and the
+  re-exports of the five subdomain crates' public types remain (issue #10).
+  `LoadbalancerSvc`'s ten associated methods keep their pre-split signatures
+  exactly, so existing consumers who depend on `swe-edge-loadbalancer` alone
+  see no behavior change beyond the five new crates becoming available to
+  depend on directly. No `-common` grab-bag crate was created; see the ADR's
+  Revision note for why `TenantId` alone (not also `HandlerId`/`NodeId`/
+  `LoadbalancerError`) needed a shared-kernel crate.
+
+  **Verification (issue #11):** `cargo build`, `cargo test`, and
+  `cargo clippy --all-targets -- -D warnings` all pass cleanly, run
+  individually in each of the 6 crate directories (this umbrella plus the
+  five subdomain crates). Migration completeness was checked using the same
+  `#[test]` fn-count diff technique as issue #1's remediation: each of the
+  19 original `*_int_test.rs` files (101 `#[test]` fns total) was traced to
+  its destination crate and its test count confirmed unchanged. This caught
+  one real drop — `tests/validator_int_test.rs` (5 tests, exercising the
+  `Validator` trait via `LoadbalancerSvc::validate_config`) had no
+  equivalent in `swe-edge-loadbalancer-egress`, whose own `BackendPoolInstance`
+  implements `Validator` — fixed by adding `egress/tests/validator_int_test.rs`
+  (same 5 scenarios, called directly via `BackendPoolInstance::validate`).
+  `arch audit --rs` could not be run against the five subdomain crates in
+  this environment: the installed `arch` CLI (v0.3.26) rejects a `Cargo.toml`
+  that declares both an empty `[workspace]` table and a `[package]` section
+  (the shape this ADR's directory layout requires to keep each crate from
+  being folded into a parent workspace), and against this umbrella crate for
+  a separate reason — the CLI expects `[package.metadata.arch].application_type`,
+  while this crate's metadata is under `[package.metadata.struct-engine]`.
+  Same class of tooling-version gap noted in issue #1's own remediation
+  (rule IDs renamed upstream); not a code defect in this crate.
+
 ## [0.3.0] - 2026-07-29
 
 ### Changed

@@ -1,0 +1,33 @@
+[workspace]
+
+[package]
+name = "swe-edge-loadbalancer-ingress"
+version = "0.4.1"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.82"
+authors = ["SWE Engineering Labs"]
+repository = "https://github.com/sweengineeringlabs/edge-loadbalancer"
+description = "IngressLoadBalancer — inbound admission and node membership subdomain for swe-edge-loadbalancer (ADR-012)"
+keywords = ["loadbalancer", "ingress", "swe"]
+categories = ["network-programming"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type = "ingress_load_balancer"
+
+[lib]
+path = "main/src/lib.rs"
+
+[dependencies]
+swe-edge-loadbalancer-tenant = { path = "../tenant" }
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2"
+
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
