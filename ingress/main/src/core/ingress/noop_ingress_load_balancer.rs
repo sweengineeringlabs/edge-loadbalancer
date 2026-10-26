@@ -25,6 +25,9 @@ mod tests {
     fn test_on_accept_with_tenant_returns_use_in_process() {
         let lb = NoopIngressLoadBalancer::default();
         let tid = TenantId::new("acme");
-        assert!(matches!(lb.on_accept(Some(&tid)), LoadBalancerHint::UseInProcess));
+        assert!(matches!(
+            lb.on_accept(Some(&tid)),
+            LoadBalancerHint::UseInProcess
+        ));
     }
 }

@@ -65,9 +65,18 @@ impl InstancePool for HandlerInstancePool {
         }
         // Saturating release — a stray report without a matching select must
         // not wrap the counter.
-        let _ = self
-            .active
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| n.checked_sub(1));
+        let mut active = self.active.load(Ordering::Acquire);
+        while active > 0 {
+            match self.active.compare_exchange_weak(
+                active,
+                active - 1,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(_) => break,
+                Err(observed) => active = observed,
+            }
+        }
         self.total_outcomes.fetch_add(1, Ordering::Relaxed);
         if !matches!(outcome, Outcome::Success) {
             self.failed_outcomes.fetch_add(1, Ordering::Relaxed);
@@ -102,8 +111,16 @@ impl ScalingSignal for HandlerInstancePool {
             // No duration data flows through Outcome — latency is populated
             // by runtime-side samplers, not by slot-counting pools.
             latency_p99_ms: 0.0,
-            error_rate: if total == 0 { 0.0 } else { failed as f64 / total as f64 },
-            saturation: if cap == 0 { 1.0 } else { active as f64 / cap as f64 },
+            error_rate: if total == 0 {
+                0.0
+            } else {
+                failed as f64 / total as f64
+            },
+            saturation: if cap == 0 {
+                1.0
+            } else {
+                active as f64 / cap as f64
+            },
         }
     }
 }
@@ -143,7 +160,10 @@ mod tests {
         assert_eq!(pool.select(), None);
         pool.report_outcome(&id, Outcome::Success);
         assert_eq!(pool.active_count(), 0);
-        assert!(pool.select().is_some(), "released slot must be acquirable again");
+        assert!(
+            pool.select().is_some(),
+            "released slot must be acquirable again"
+        );
     }
 
     #[test]
@@ -151,7 +171,11 @@ mod tests {
         let pool = pool_with_cap(1);
         let _ = pool.select();
         pool.report_outcome(&HandlerId::new("other"), Outcome::Success);
-        assert_eq!(pool.active_count(), 1, "foreign handler report must not release the slot");
+        assert_eq!(
+            pool.active_count(),
+            1,
+            "foreign handler report must not release the slot"
+        );
     }
 
     #[test]
@@ -167,7 +191,10 @@ mod tests {
         assert!(pool.select().is_some());
         assert_eq!(pool.select(), None);
         pool.set_concurrency_cap(2);
-        assert!(pool.select().is_some(), "raised cap must admit another request");
+        assert!(
+            pool.select().is_some(),
+            "raised cap must admit another request"
+        );
     }
 
     #[test]
@@ -184,7 +211,12 @@ mod tests {
         let pool = pool_with_cap(4);
         let id = pool.select().unwrap();
         let _ = pool.select();
-        pool.report_outcome(&id, Outcome::Failure { reason: "boom".to_string() });
+        pool.report_outcome(
+            &id,
+            Outcome::Failure {
+                reason: "boom".to_string(),
+            },
+        );
         let snap = pool.snapshot();
         assert_eq!(snap.active_instances, 1);
         assert_eq!(snap.error_rate, 1.0, "1 failure of 1 outcome");

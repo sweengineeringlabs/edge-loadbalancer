@@ -10,7 +10,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use swe_edge_loadbalancer_egress::{
-    BackendHealth, BackendPool, BackendPoolInstance, EgressError, LoadbalancerConfig, Outcome, Strategy,
+    BackendHealth, BackendPool, BackendPoolInstance, EgressError, LoadbalancerConfig, Outcome,
+    Strategy,
 };
 
 fn config_with_two_backends() -> LoadbalancerConfig {
@@ -18,8 +19,14 @@ fn config_with_two_backends() -> LoadbalancerConfig {
     LoadbalancerConfig {
         strategy: Strategy::LeastConnections,
         backends: vec![
-            BackendConfig { url: "https://be-a.internal".to_string(), weight: 1 },
-            BackendConfig { url: "https://be-b.internal".to_string(), weight: 1 },
+            BackendConfig {
+                url: "https://be-a.internal".to_string(),
+                weight: 1,
+            },
+            BackendConfig {
+                url: "https://be-b.internal".to_string(),
+                weight: 1,
+            },
         ],
     }
 }
@@ -45,20 +52,34 @@ fn test_backend_entry_health_degrades_after_failure_outcome() {
     let config = LoadbalancerConfig {
         strategy: Strategy::RoundRobin,
         backends: vec![
-            BackendConfig { url: "https://be-a.internal".to_string(), weight: 1 },
-            BackendConfig { url: "https://be-b.internal".to_string(), weight: 1 },
+            BackendConfig {
+                url: "https://be-a.internal".to_string(),
+                weight: 1,
+            },
+            BackendConfig {
+                url: "https://be-b.internal".to_string(),
+                weight: 1,
+            },
         ],
     };
     let pool = BackendPoolInstance::build(config).expect("pool must build");
     let backend = pool.select().expect("initial select must succeed");
 
     // Mark the selected backend as failed.
-    pool.report_outcome(&backend.id, Outcome::Failure { reason: "timeout".to_string() });
+    pool.report_outcome(
+        &backend.id,
+        Outcome::Failure {
+            reason: "timeout".to_string(),
+        },
+    );
 
     // With round-robin across 2 backends where one is Degraded but not Dead,
     // the other backend is still selectable. Simply verify select still works
     // (pool does not error when at least one healthy backend remains).
-    assert!(pool.select().is_ok(), "pool with one healthy backend must still select successfully");
+    assert!(
+        pool.select().is_ok(),
+        "pool with one healthy backend must still select successfully"
+    );
 }
 
 #[test]
@@ -76,7 +97,12 @@ fn test_backend_entry_health_recovers_after_success_outcome() {
     let backend = pool.select().expect("initial select must succeed");
 
     // Degrade, then recover.
-    pool.report_outcome(&backend.id, Outcome::Failure { reason: "connection refused".to_string() });
+    pool.report_outcome(
+        &backend.id,
+        Outcome::Failure {
+            reason: "connection refused".to_string(),
+        },
+    );
     pool.report_outcome(&backend.id, Outcome::Success);
 
     // After recovery the single backend should be selectable again.

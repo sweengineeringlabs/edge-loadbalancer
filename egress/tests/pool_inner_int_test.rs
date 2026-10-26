@@ -28,12 +28,16 @@ fn rr_config(n: usize) -> LoadbalancerConfig {
 fn test_pool_inner_round_robin_cycles_across_all_backends() {
     // @covers: PoolInner::rr_counter, Strategy::RoundRobin dispatch
     let pool = BackendPoolInstance::build(rr_config(3)).expect("pool must build");
-    let mut urls: Vec<String> =
-        (0..6).map(|_| pool.select().expect("select must succeed").url).collect();
+    let mut urls: Vec<String> = (0..6)
+        .map(|_| pool.select().expect("select must succeed").url)
+        .collect();
     urls.dedup();
     // After dedup of a 2-cycle over 3 backends, we should see > 1 distinct URL,
     // confirming the counter actually advances.
-    assert!(urls.len() > 1, "round-robin must distribute across backends: {urls:?}");
+    assert!(
+        urls.len() > 1,
+        "round-robin must distribute across backends: {urls:?}"
+    );
 }
 
 #[test]
@@ -52,14 +56,24 @@ fn test_pool_inner_weighted_strategy_respects_weight_distribution() {
     let config = LoadbalancerConfig {
         strategy: Strategy::Weighted,
         backends: vec![
-            BackendConfig { url: "https://heavy.internal".to_string(), weight: 9 },
-            BackendConfig { url: "https://light.internal".to_string(), weight: 1 },
+            BackendConfig {
+                url: "https://heavy.internal".to_string(),
+                weight: 9,
+            },
+            BackendConfig {
+                url: "https://light.internal".to_string(),
+                weight: 1,
+            },
         ],
     };
     let pool = BackendPoolInstance::build(config).expect("pool must build");
 
     let heavy_count = (0..100)
-        .filter(|_| pool.select().map(|b| b.url.contains("heavy")).unwrap_or(false))
+        .filter(|_| {
+            pool.select()
+                .map(|b| b.url.contains("heavy"))
+                .unwrap_or(false)
+        })
         .count();
 
     // Heavy backend has 9/10 weight — expect at least 70/100 selections.
@@ -81,7 +95,10 @@ fn test_pool_inner_least_connections_strategy_succeeds_with_single_backend() {
     };
     let pool = BackendPoolInstance::build(config).expect("pool must build");
     let result = pool.select();
-    assert!(result.is_ok(), "single-backend least-connections must select successfully");
+    assert!(
+        result.is_ok(),
+        "single-backend least-connections must select successfully"
+    );
     assert_eq!(result.unwrap().url, "https://sole.internal");
 }
 
@@ -102,6 +119,9 @@ fn test_pool_inner_concurrent_selects_return_valid_backends() {
         .collect();
 
     for h in handles {
-        assert!(h.join().expect("thread must not panic"), "concurrent select must succeed");
+        assert!(
+            h.join().expect("thread must not panic"),
+            "concurrent select must succeed"
+        );
     }
 }

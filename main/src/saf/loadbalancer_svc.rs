@@ -29,7 +29,9 @@ impl LoadbalancerSvc {
     /// # Errors
     ///
     /// - [`LoadbalancerError::Egress`] — validation failed.
-    pub fn build_pool(config: LoadbalancerConfig) -> Result<BackendPoolInstance, LoadbalancerError> {
+    pub fn build_pool(
+        config: LoadbalancerConfig,
+    ) -> Result<BackendPoolInstance, LoadbalancerError> {
         Ok(BackendPoolInstance::build(config)?)
     }
 
@@ -70,7 +72,11 @@ impl LoadbalancerSvc {
         tenant_id: Option<TenantId>,
         concurrency_cap: usize,
     ) -> Result<HandlerInstancePool, LoadbalancerError> {
-        Ok(AutoscaleSvc::build_handler_pool(handler_id, tenant_id, concurrency_cap)?)
+        Ok(AutoscaleSvc::build_handler_pool(
+            handler_id,
+            tenant_id,
+            concurrency_cap,
+        )?)
     }
 
     /// Build an empty [`InMemoryPoolRegistry`].

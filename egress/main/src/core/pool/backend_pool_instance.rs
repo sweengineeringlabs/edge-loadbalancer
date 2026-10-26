@@ -102,13 +102,11 @@ impl BackendPool for BackendPoolInstance {
                 }
                 chosen
             }
-            Strategy::LeastConnections => {
-                healthy
-                    .iter()
-                    .copied()
-                    .min_by_key(|&i| entries[i].connection_count())
-                    .unwrap_or(healthy[0])
-            }
+            Strategy::LeastConnections => healthy
+                .iter()
+                .copied()
+                .min_by_key(|&i| entries[i].connection_count())
+                .unwrap_or(healthy[0]),
         };
 
         Ok(entries[idx].backend.clone())
@@ -157,8 +155,14 @@ mod tests {
         LoadbalancerConfig {
             strategy: Strategy::RoundRobin,
             backends: vec![
-                BackendConfig { url: "https://api-1.internal".to_string(), weight: 1 },
-                BackendConfig { url: "https://api-2.internal".to_string(), weight: 1 },
+                BackendConfig {
+                    url: "https://api-1.internal".to_string(),
+                    weight: 1,
+                },
+                BackendConfig {
+                    url: "https://api-2.internal".to_string(),
+                    weight: 1,
+                },
             ],
         }
     }
@@ -188,7 +192,10 @@ mod tests {
     fn test_validate_empty_url_returns_error() {
         let config = LoadbalancerConfig {
             strategy: Strategy::RoundRobin,
-            backends: vec![BackendConfig { url: String::new(), weight: 1 }],
+            backends: vec![BackendConfig {
+                url: String::new(),
+                weight: 1,
+            }],
         };
         assert!(BackendPoolInstance::validate(&config).is_err());
     }
@@ -196,6 +203,10 @@ mod tests {
     #[test]
     fn test_backend_count_returns_number_of_configured_backends() {
         let pool = BackendPoolInstance::build(two_backend_config()).unwrap();
-        assert_eq!(pool.backend_count(), 2, "backend_count must equal configured backend count");
+        assert_eq!(
+            pool.backend_count(),
+            2,
+            "backend_count must equal configured backend count"
+        );
     }
 }
