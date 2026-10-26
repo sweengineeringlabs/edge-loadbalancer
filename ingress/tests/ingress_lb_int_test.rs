@@ -24,7 +24,10 @@ fn test_noop_lb_always_admits_in_process_without_tenant() {
 fn test_noop_lb_always_admits_in_process_with_tenant() {
     let lb = NoopIngressLoadBalancer::default();
     let tid = TenantId::new("acme");
-    assert!(matches!(lb.on_accept(Some(&tid)), LoadBalancerHint::UseInProcess));
+    assert!(matches!(
+        lb.on_accept(Some(&tid)),
+        LoadBalancerHint::UseInProcess
+    ));
 }
 
 #[test]

@@ -36,7 +36,9 @@ impl TomlTenantRegistry {
     pub(crate) fn build(toml_str: &str) -> Result<Self, RegistryError> {
         let doc: TenantDocument =
             toml::from_str(toml_str).map_err(|e| RegistryError::ParseFailed(e.to_string()))?;
-        Ok(Self { assignments: doc.tenant.assignments })
+        Ok(Self {
+            assignments: doc.tenant.assignments,
+        })
     }
 }
 
@@ -62,8 +64,8 @@ mod tests {
 
     #[test]
     fn test_tier_of_unknown_tenant_returns_none() {
-        let reg = TomlTenantRegistry::build("[tenant.assignments]\nacme = \"enterprise\"\n")
-            .unwrap();
+        let reg =
+            TomlTenantRegistry::build("[tenant.assignments]\nacme = \"enterprise\"\n").unwrap();
         assert_eq!(reg.tier_of(&TenantId::new("ghost")), None);
     }
 

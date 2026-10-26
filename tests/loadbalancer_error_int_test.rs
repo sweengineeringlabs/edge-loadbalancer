@@ -9,7 +9,9 @@
 //! delegation for all four variants.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use swe_edge_loadbalancer::{AutoscaleError, EgressError, IngressError, LoadbalancerError, RegistryError};
+use swe_edge_loadbalancer::{
+    AutoscaleError, EgressError, IngressError, LoadbalancerError, RegistryError,
+};
 
 #[test]
 fn test_loadbalancer_error_egress_variant_display_delegates_to_wrapped_error() {
@@ -36,7 +38,8 @@ fn test_loadbalancer_error_ingress_variant_display_delegates_to_wrapped_error() 
 #[test]
 fn test_loadbalancer_error_autoscale_variant_display_delegates_to_wrapped_error() {
     let reason = "concurrency_cap must be > 0".to_string();
-    let msg = LoadbalancerError::Autoscale(AutoscaleError::InvalidConfig(reason.clone())).to_string();
+    let msg =
+        LoadbalancerError::Autoscale(AutoscaleError::InvalidConfig(reason.clone())).to_string();
     assert_eq!(
         msg,
         AutoscaleError::InvalidConfig(reason).to_string(),
@@ -59,7 +62,10 @@ fn test_loadbalancer_error_registry_variant_display_delegates_to_wrapped_error()
 fn test_loadbalancer_error_from_egress_error_wraps_as_egress_variant() {
     let err: LoadbalancerError = EgressError::NoHealthyBackends.into();
     assert!(
-        matches!(err, LoadbalancerError::Egress(EgressError::NoHealthyBackends)),
+        matches!(
+            err,
+            LoadbalancerError::Egress(EgressError::NoHealthyBackends)
+        ),
         "From<EgressError> must produce the Egress variant: {err:?}"
     );
 }
@@ -68,7 +74,10 @@ fn test_loadbalancer_error_from_egress_error_wraps_as_egress_variant() {
 fn test_loadbalancer_error_from_ingress_error_wraps_as_ingress_variant() {
     let err: LoadbalancerError = IngressError::InvalidConfig("x".to_string()).into();
     assert!(
-        matches!(err, LoadbalancerError::Ingress(IngressError::InvalidConfig(_))),
+        matches!(
+            err,
+            LoadbalancerError::Ingress(IngressError::InvalidConfig(_))
+        ),
         "From<IngressError> must produce the Ingress variant: {err:?}"
     );
 }
@@ -77,7 +86,10 @@ fn test_loadbalancer_error_from_ingress_error_wraps_as_ingress_variant() {
 fn test_loadbalancer_error_from_autoscale_error_wraps_as_autoscale_variant() {
     let err: LoadbalancerError = AutoscaleError::InvalidConfig("x".to_string()).into();
     assert!(
-        matches!(err, LoadbalancerError::Autoscale(AutoscaleError::InvalidConfig(_))),
+        matches!(
+            err,
+            LoadbalancerError::Autoscale(AutoscaleError::InvalidConfig(_))
+        ),
         "From<AutoscaleError> must produce the Autoscale variant: {err:?}"
     );
 }
@@ -86,7 +98,10 @@ fn test_loadbalancer_error_from_autoscale_error_wraps_as_autoscale_variant() {
 fn test_loadbalancer_error_from_registry_error_wraps_as_registry_variant() {
     let err: LoadbalancerError = RegistryError::ParseFailed("x".to_string()).into();
     assert!(
-        matches!(err, LoadbalancerError::Registry(RegistryError::ParseFailed(_))),
+        matches!(
+            err,
+            LoadbalancerError::Registry(RegistryError::ParseFailed(_))
+        ),
         "From<RegistryError> must produce the Registry variant: {err:?}"
     );
 }
@@ -143,5 +158,8 @@ fn test_loadbalancer_error_converts_to_boxed_std_error_via_question_mark() {
         Ok(())
     }
     let err = boxed().unwrap_err();
-    assert!(!err.to_string().is_empty(), "boxed error must still Display");
+    assert!(
+        !err.to_string().is_empty(),
+        "boxed error must still Display"
+    );
 }

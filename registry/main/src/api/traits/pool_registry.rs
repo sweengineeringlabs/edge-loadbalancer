@@ -14,6 +14,9 @@ use swe_edge_loadbalancer_tenant::TenantId;
 pub trait PoolRegistry: Send + Sync {
     /// Return the pool for the `(handler, tenant)` pair, or `None` when no
     /// pool is registered (callers then dispatch ungated).
-    fn get(&self, handler_id: &HandlerId, tenant_id: Option<&TenantId>)
-        -> Option<Arc<dyn InstancePool>>;
+    fn get(
+        &self,
+        handler_id: &HandlerId,
+        tenant_id: Option<&TenantId>,
+    ) -> Option<Arc<dyn InstancePool>>;
 }

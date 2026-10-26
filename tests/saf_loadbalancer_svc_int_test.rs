@@ -9,8 +9,14 @@ fn two_backend_config() -> LoadbalancerConfig {
     LoadbalancerConfig {
         strategy: Strategy::RoundRobin,
         backends: vec![
-            BackendConfig { url: "https://api-1.internal".to_string(), weight: 1 },
-            BackendConfig { url: "https://api-2.internal".to_string(), weight: 1 },
+            BackendConfig {
+                url: "https://api-1.internal".to_string(),
+                weight: 1,
+            },
+            BackendConfig {
+                url: "https://api-2.internal".to_string(),
+                weight: 1,
+            },
         ],
     }
 }
@@ -82,8 +88,16 @@ fn test_select_backend_fn_returns_backend_from_healthy_pool() {
 #[test]
 fn test_select_backend_fn_returns_error_when_all_backends_degraded() {
     let pool = LoadbalancerSvc::build_pool(two_backend_config()).expect("pool must build");
-    LoadbalancerSvc::report_outcome(&pool, &BackendId::new("https://api-1.internal"), Outcome::CircuitOpen);
-    LoadbalancerSvc::report_outcome(&pool, &BackendId::new("https://api-2.internal"), Outcome::CircuitOpen);
+    LoadbalancerSvc::report_outcome(
+        &pool,
+        &BackendId::new("https://api-1.internal"),
+        Outcome::CircuitOpen,
+    );
+    LoadbalancerSvc::report_outcome(
+        &pool,
+        &BackendId::new("https://api-2.internal"),
+        Outcome::CircuitOpen,
+    );
     let err = LoadbalancerSvc::select(&pool).unwrap_err();
     assert!(matches!(
         err,
@@ -101,7 +115,11 @@ fn test_select_backend_fn_returns_error_when_all_backends_degraded() {
 fn test_pool_backend_count_fn_returns_configured_backend_count() {
     // @covers: pool_backend_count
     let pool = LoadbalancerSvc::build_pool(two_backend_config()).expect("pool must build");
-    assert_eq!(LoadbalancerSvc::backend_count(&pool), 2, "pool must report correct backend count");
+    assert_eq!(
+        LoadbalancerSvc::backend_count(&pool),
+        2,
+        "pool must report correct backend count"
+    );
 }
 
 #[test]
@@ -115,7 +133,11 @@ fn test_pool_backend_count_fn_single_backend_returns_one() {
         }],
     };
     let pool = LoadbalancerSvc::build_pool(config).expect("pool must build");
-    assert_eq!(LoadbalancerSvc::backend_count(&pool), 1, "single-backend pool must report count of 1");
+    assert_eq!(
+        LoadbalancerSvc::backend_count(&pool),
+        1,
+        "single-backend pool must report count of 1"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +158,19 @@ fn test_report_backend_outcome_fn_failure_degrades_backend() {
     let pool = LoadbalancerSvc::build_pool(two_backend_config()).expect("pool must build");
     let id1 = BackendId::new("https://api-1.internal");
     let id2 = BackendId::new("https://api-2.internal");
-    LoadbalancerSvc::report_outcome(&pool, &id1, Outcome::Failure { reason: "timeout".to_string() });
-    LoadbalancerSvc::report_outcome(&pool, &id2, Outcome::Failure { reason: "timeout".to_string() });
+    LoadbalancerSvc::report_outcome(
+        &pool,
+        &id1,
+        Outcome::Failure {
+            reason: "timeout".to_string(),
+        },
+    );
+    LoadbalancerSvc::report_outcome(
+        &pool,
+        &id2,
+        Outcome::Failure {
+            reason: "timeout".to_string(),
+        },
+    );
     LoadbalancerSvc::select(&pool).unwrap_err();
 }

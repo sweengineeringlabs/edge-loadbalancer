@@ -5,7 +5,9 @@ use swe_edge_loadbalancer_egress::{ApplicationConfigBuilder, Strategy};
 
 #[test]
 fn test_application_config_builder_new_builds_default_config() {
-    let config = ApplicationConfigBuilder::new().build().expect("default build must succeed");
+    let config = ApplicationConfigBuilder::new()
+        .build()
+        .expect("default build must succeed");
     // Default config has no backends and RoundRobin strategy.
     assert_eq!(config.strategy, Strategy::RoundRobin);
     assert!(config.backends.is_empty());

@@ -44,7 +44,10 @@ fn test_backend_pool_instance_struct_build_fails_with_empty_backends() {
     };
     let err = BackendPoolInstance::build(config).unwrap_err();
     assert!(
-        matches!(err, swe_edge_loadbalancer_egress::EgressError::InvalidConfig(_)),
+        matches!(
+            err,
+            swe_edge_loadbalancer_egress::EgressError::InvalidConfig(_)
+        ),
         "empty backends must return InvalidConfig: {err:?}"
     );
 }

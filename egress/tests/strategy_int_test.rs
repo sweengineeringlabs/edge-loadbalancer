@@ -4,7 +4,9 @@
 use swe_edge_loadbalancer_egress::{LoadbalancerConfig, Strategy};
 
 fn parse_strategy(toml: &str) -> Strategy {
-    LoadbalancerConfig::from_toml(toml).expect("valid toml").strategy
+    LoadbalancerConfig::from_toml(toml)
+        .expect("valid toml")
+        .strategy
 }
 
 #[test]
@@ -59,8 +61,5 @@ fn test_strategy_unknown_value_returns_parse_error() {
         strategy = "not-a-strategy"
         "#,
     );
-    assert!(
-        result.is_err(),
-        "unknown strategy value must fail to parse"
-    );
+    assert!(result.is_err(), "unknown strategy value must fail to parse");
 }

@@ -2,10 +2,10 @@
 
 [package]
 name = "swe-edge-loadbalancer-tenant"
-version = "0.4.1"
+version = "0.5.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-rust-version = "1.82"
+rust-version = "1.99.1"
 authors = ["SWE Engineering Labs"]
 repository = "https://github.com/sweengineeringlabs/edge-loadbalancer"
 description = "TenantId — shared-kernel tenant identity newtype for swe-edge-loadbalancer subdomain crates (ADR-001)"

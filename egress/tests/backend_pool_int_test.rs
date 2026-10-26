@@ -2,15 +2,22 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use swe_edge_loadbalancer_egress::{
-    BackendConfig, BackendId, BackendPool, BackendPoolInstance, LoadbalancerConfig, Outcome, Strategy,
+    BackendConfig, BackendId, BackendPool, BackendPoolInstance, LoadbalancerConfig, Outcome,
+    Strategy,
 };
 
 fn two_backend_rr_config() -> LoadbalancerConfig {
     LoadbalancerConfig {
         strategy: Strategy::RoundRobin,
         backends: vec![
-            BackendConfig { url: "https://api-1.internal".to_string(), weight: 1 },
-            BackendConfig { url: "https://api-2.internal".to_string(), weight: 1 },
+            BackendConfig {
+                url: "https://api-1.internal".to_string(),
+                weight: 1,
+            },
+            BackendConfig {
+                url: "https://api-2.internal".to_string(),
+                weight: 1,
+            },
         ],
     }
 }
@@ -43,7 +50,12 @@ fn test_backend_pool_degraded_backend_excluded_from_selection() {
     let pool = BackendPoolInstance::build(two_backend_rr_config()).expect("pool must build");
     let id1 = BackendId::new("https://api-1.internal");
     // Degrade the first backend
-    pool.report_outcome(&id1, Outcome::Failure { reason: "err".to_string() });
+    pool.report_outcome(
+        &id1,
+        Outcome::Failure {
+            reason: "err".to_string(),
+        },
+    );
     // All subsequent selections must return only api-2
     for _ in 0..5 {
         let b = pool.select().expect("must select the healthy backend");
@@ -63,7 +75,10 @@ fn test_backend_pool_all_degraded_returns_no_healthy_backends_error() {
     pool.report_outcome(&id2, Outcome::CircuitOpen);
     let err = pool.select().unwrap_err();
     assert!(
-        matches!(err, swe_edge_loadbalancer_egress::EgressError::NoHealthyBackends),
+        matches!(
+            err,
+            swe_edge_loadbalancer_egress::EgressError::NoHealthyBackends
+        ),
         "all backends degraded must return NoHealthyBackends: {err:?}"
     );
 }
@@ -90,7 +105,10 @@ fn test_backend_pool_empty_config_returns_invalid_config_error() {
     };
     let err = BackendPoolInstance::build(config).unwrap_err();
     assert!(
-        matches!(err, swe_edge_loadbalancer_egress::EgressError::InvalidConfig(_)),
+        matches!(
+            err,
+            swe_edge_loadbalancer_egress::EgressError::InvalidConfig(_)
+        ),
         "empty backends must fail with InvalidConfig: {err:?}"
     );
 }
@@ -102,14 +120,28 @@ fn test_backend_pool_weighted_strategy_distributes_by_weight() {
     let config = LoadbalancerConfig {
         strategy: Strategy::Weighted,
         backends: vec![
-            BackendConfig { url: "https://heavy.internal".to_string(), weight: 3 },
-            BackendConfig { url: "https://light.internal".to_string(), weight: 1 },
+            BackendConfig {
+                url: "https://heavy.internal".to_string(),
+                weight: 3,
+            },
+            BackendConfig {
+                url: "https://light.internal".to_string(),
+                weight: 1,
+            },
         ],
     };
     let pool = BackendPoolInstance::build(config).expect("pool must build");
-    let urls: Vec<String> = (0..4).map(|_| pool.select().expect("must select").url).collect();
-    let heavy_count = urls.iter().filter(|u| u.as_str() == "https://heavy.internal").count();
-    let light_count = urls.iter().filter(|u| u.as_str() == "https://light.internal").count();
+    let urls: Vec<String> = (0..4)
+        .map(|_| pool.select().expect("must select").url)
+        .collect();
+    let heavy_count = urls
+        .iter()
+        .filter(|u| u.as_str() == "https://heavy.internal")
+        .count();
+    let light_count = urls
+        .iter()
+        .filter(|u| u.as_str() == "https://light.internal")
+        .count();
     assert_eq!(heavy_count, 3, "weighted: heavy backend must get 3/4 picks");
     assert_eq!(light_count, 1, "weighted: light backend must get 1/4 picks");
 }

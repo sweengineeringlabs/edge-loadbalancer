@@ -29,6 +29,8 @@ fn test_outcome_circuit_open_variant_is_constructible() {
 #[test]
 fn test_outcome_failure_empty_reason_is_accepted() {
     // Empty reason is structurally valid — upstream layers may use a sentinel.
-    let outcome = Outcome::Failure { reason: String::new() };
+    let outcome = Outcome::Failure {
+        reason: String::new(),
+    };
     assert!(matches!(outcome, Outcome::Failure { .. }));
 }

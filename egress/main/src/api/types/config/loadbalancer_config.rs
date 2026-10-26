@@ -32,29 +32,17 @@ pub struct LoadbalancerConfig {
     pub backends: Vec<BackendConfig>,
 }
 
-impl swe_edge_configbuilder::ConfigSection for LoadbalancerConfig {
-    fn section_name() -> &'static str {
-        // @allow: no_stub_fn_bodies — required trait method with constant return
-        "loadbalancer"
-    }
-}
-
-impl swe_edge_configbuilder::OptionalSection for LoadbalancerConfig {
-    fn section_name() -> &'static str {
-        // @allow: no_stub_fn_bodies — required trait method with constant return
-        "loadbalancer"
-    }
-
-    fn metadata() -> swe_edge_configbuilder::FeatureMetadata {
-        swe_edge_configbuilder::FeatureMetadata {
-            description: "backend pool load balancing (round-robin/weighted/least-connections)",
-            owner: "platform-team",
-            deprecated_since: None,
-        }
-    }
-}
-
 impl LoadbalancerConfig {
+    /// Configuration section name used by composition layers.
+    pub const SECTION_NAME: &'static str = "loadbalancer";
+
+    /// Description for the optional load-balancer configuration section.
+    pub const DESCRIPTION: &'static str =
+        "backend pool load balancing (round-robin/weighted/least-connections)";
+
+    /// Owning team for the optional load-balancer configuration section.
+    pub const OWNER: &'static str = "platform-team";
+
     /// Parse from TOML text that contains a `[loadbalancer]` table.
     ///
     /// # Errors

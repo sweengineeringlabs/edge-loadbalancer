@@ -16,7 +16,10 @@ fn valid_config() -> LoadbalancerConfig {
 #[test]
 fn test_validate_loadbalancer_config_valid_config_returns_ok() {
     let result = LoadbalancerSvc::validate_config(&valid_config());
-    assert!(result.is_ok(), "valid config must pass validation: {result:?}");
+    assert!(
+        result.is_ok(),
+        "valid config must pass validation: {result:?}"
+    );
 }
 
 #[test]
@@ -36,7 +39,10 @@ fn test_validate_loadbalancer_config_empty_backends_returns_error() {
 fn test_validate_loadbalancer_config_empty_url_returns_error() {
     let config = LoadbalancerConfig {
         strategy: Strategy::RoundRobin,
-        backends: vec![BackendConfig { url: String::new(), weight: 1 }],
+        backends: vec![BackendConfig {
+            url: String::new(),
+            weight: 1,
+        }],
     };
     let err = LoadbalancerSvc::validate_config(&config).unwrap_err();
     assert!(
@@ -66,8 +72,14 @@ fn test_validate_loadbalancer_config_multiple_backends_all_valid_returns_ok() {
     let config = LoadbalancerConfig {
         strategy: Strategy::Weighted,
         backends: vec![
-            BackendConfig { url: "https://api-1.internal".to_string(), weight: 3 },
-            BackendConfig { url: "https://api-2.internal".to_string(), weight: 1 },
+            BackendConfig {
+                url: "https://api-1.internal".to_string(),
+                weight: 3,
+            },
+            BackendConfig {
+                url: "https://api-2.internal".to_string(),
+                weight: 1,
+            },
         ],
     };
     assert!(LoadbalancerSvc::validate_config(&config).is_ok());

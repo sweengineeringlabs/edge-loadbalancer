@@ -4,7 +4,9 @@
 use swe_edge_loadbalancer_egress::{BackendConfig, LoadbalancerConfig, Strategy};
 
 fn parse_backends(toml: &str) -> Vec<BackendConfig> {
-    LoadbalancerConfig::from_toml(toml).expect("valid toml").backends
+    LoadbalancerConfig::from_toml(toml)
+        .expect("valid toml")
+        .backends
 }
 
 #[test]
@@ -28,7 +30,10 @@ fn test_backend_config_struct_weight_defaults_to_one_when_absent() {
         url = "https://api-1.internal"
         "#,
     );
-    assert_eq!(backends[0].weight, 1, "weight must default to 1 when absent");
+    assert_eq!(
+        backends[0].weight, 1,
+        "weight must default to 1 when absent"
+    );
 }
 
 #[test]

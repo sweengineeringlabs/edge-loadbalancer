@@ -8,7 +8,9 @@
 //! the facade method delegated to. Assertions and covered behaviour are unchanged.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use swe_edge_loadbalancer_egress::{BackendConfig, BackendPoolInstance, LoadbalancerConfig, Strategy, Validator};
+use swe_edge_loadbalancer_egress::{
+    BackendConfig, BackendPoolInstance, LoadbalancerConfig, Strategy, Validator,
+};
 
 fn valid_config() -> LoadbalancerConfig {
     LoadbalancerConfig {
@@ -23,7 +25,10 @@ fn valid_config() -> LoadbalancerConfig {
 #[test]
 fn test_validator_valid_config_returns_ok() {
     let result = BackendPoolInstance::validate(&valid_config());
-    assert!(result.is_ok(), "valid config must pass validation: {result:?}");
+    assert!(
+        result.is_ok(),
+        "valid config must pass validation: {result:?}"
+    );
 }
 
 #[test]
@@ -43,7 +48,10 @@ fn test_validator_empty_backends_returns_error() {
 fn test_validator_empty_url_returns_error() {
     let config = LoadbalancerConfig {
         strategy: Strategy::RoundRobin,
-        backends: vec![BackendConfig { url: String::new(), weight: 1 }],
+        backends: vec![BackendConfig {
+            url: String::new(),
+            weight: 1,
+        }],
     };
     let err = BackendPoolInstance::validate(&config).unwrap_err();
     assert!(
@@ -73,8 +81,14 @@ fn test_validator_multiple_backends_all_valid_returns_ok() {
     let config = LoadbalancerConfig {
         strategy: Strategy::Weighted,
         backends: vec![
-            BackendConfig { url: "https://api-1.internal".to_string(), weight: 3 },
-            BackendConfig { url: "https://api-2.internal".to_string(), weight: 1 },
+            BackendConfig {
+                url: "https://api-1.internal".to_string(),
+                weight: 3,
+            },
+            BackendConfig {
+                url: "https://api-2.internal".to_string(),
+                weight: 1,
+            },
         ],
     };
     assert!(BackendPoolInstance::validate(&config).is_ok());

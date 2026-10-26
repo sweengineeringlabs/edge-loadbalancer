@@ -24,6 +24,7 @@ fn test_build_handler_pool_returns_working_pool() {
 #[test]
 fn test_build_handler_pool_with_tenant_id() {
     let pool =
-        AutoscaleSvc::build_handler_pool(HandlerId::new("notify"), Some(TenantId::new("acme")), 5).unwrap();
+        AutoscaleSvc::build_handler_pool(HandlerId::new("notify"), Some(TenantId::new("acme")), 5)
+            .unwrap();
     assert_eq!(pool.concurrency_cap(), 5);
 }
