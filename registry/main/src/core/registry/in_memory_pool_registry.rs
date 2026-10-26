@@ -74,15 +74,25 @@ mod tests {
 
     struct ConstPool(HandlerId);
     impl InstancePool for ConstPool {
-        fn select(&self) -> Option<HandlerId> { Some(self.0.clone()) }
+        fn select(&self) -> Option<HandlerId> {
+            Some(self.0.clone())
+        }
         fn report_outcome(&self, _: &HandlerId, _: Outcome) {}
-        fn active_count(&self) -> usize { 0 }
-        fn concurrency_cap(&self) -> usize { 1 }
+        fn active_count(&self) -> usize {
+            0
+        }
+        fn concurrency_cap(&self) -> usize {
+            1
+        }
         fn set_concurrency_cap(&self, _: usize) {}
     }
 
-    fn payment() -> HandlerId { HandlerId::new("payment") }
-    fn acme() -> TenantId { TenantId::new("acme") }
+    fn payment() -> HandlerId {
+        HandlerId::new("payment")
+    }
+    fn acme() -> TenantId {
+        TenantId::new("acme")
+    }
 
     #[test]
     fn test_get_exact_tenant_match_returns_pool() {

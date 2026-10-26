@@ -9,8 +9,14 @@ fn two_backend_config() -> LoadbalancerConfig {
     LoadbalancerConfig {
         strategy: Strategy::RoundRobin,
         backends: vec![
-            BackendConfig { url: "https://svc-1.internal".to_string(), weight: 1 },
-            BackendConfig { url: "https://svc-2.internal".to_string(), weight: 1 },
+            BackendConfig {
+                url: "https://svc-1.internal".to_string(),
+                weight: 1,
+            },
+            BackendConfig {
+                url: "https://svc-2.internal".to_string(),
+                weight: 1,
+            },
         ],
     }
 }
@@ -19,7 +25,10 @@ fn two_backend_config() -> LoadbalancerConfig {
 fn test_loadbalancer_svc_struct_build_pool_returns_pool() {
     let pool = LoadbalancerSvc::build_pool(two_backend_config()).expect("pool must build");
     let backend = LoadbalancerSvc::select(&pool).expect("must select from healthy pool");
-    assert!(!backend.url.is_empty(), "selected backend url must not be empty");
+    assert!(
+        !backend.url.is_empty(),
+        "selected backend url must not be empty"
+    );
 }
 
 #[test]
@@ -70,8 +79,20 @@ fn test_loadbalancer_svc_struct_report_outcome_success_restores_backend() {
     let pool = LoadbalancerSvc::build_pool(two_backend_config()).expect("pool must build");
     let id1 = BackendId::new("https://svc-1.internal");
     let id2 = BackendId::new("https://svc-2.internal");
-    LoadbalancerSvc::report_outcome(&pool, &id1, Outcome::Failure { reason: "err".to_string() });
-    LoadbalancerSvc::report_outcome(&pool, &id2, Outcome::Failure { reason: "err".to_string() });
+    LoadbalancerSvc::report_outcome(
+        &pool,
+        &id1,
+        Outcome::Failure {
+            reason: "err".to_string(),
+        },
+    );
+    LoadbalancerSvc::report_outcome(
+        &pool,
+        &id2,
+        Outcome::Failure {
+            reason: "err".to_string(),
+        },
+    );
     // Restore one
     LoadbalancerSvc::report_outcome(&pool, &id1, Outcome::Success);
     let b = LoadbalancerSvc::select(&pool).expect("restored backend must be selectable");

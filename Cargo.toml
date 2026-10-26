@@ -1,9 +1,9 @@
 [package]
 name = "swe-edge-loadbalancer"
-version = "0.4.1"
+version = "0.5.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-rust-version = "1.82"
+rust-version = "1.99.1"
 authors = ["SWE Engineering Labs"]
 repository = "https://github.com/sweengineeringlabs/edge-loadbalancer"
 description = "Shared LB primitives — BackendPool, InstancePool, IngressLoadBalancer, TenantRegistry, PoolRegistry (ADR-011/012/013)"
@@ -24,10 +24,6 @@ swe-edge-loadbalancer-autoscale = { path = "autoscale" }
 swe-edge-loadbalancer-ingress = { path = "ingress" }
 swe-edge-loadbalancer-registry = { path = "registry" }
 thiserror = "2"
-
-[dev-dependencies]
-swe-edge-configbuilder = { git = "https://github.com/sweengineeringlabs/edge-configbuilder.git", tag = "v0.4.2" }
-tokio = { version = "1.52", features = ["macros", "rt", "rt-multi-thread"] }
 
 [lints.rust]
 unsafe_code = "deny"

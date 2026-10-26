@@ -42,7 +42,8 @@ fn test_register_tenant_pool_fallback_from_shared() {
 #[test]
 fn test_tenant_override_wins() {
     let reg = RegistrySvc::build_pool_registry();
-    let shared: Arc<dyn InstancePool> = Arc::new(AutoscaleSvc::build_handler_pool(payment(), None, 10).unwrap());
+    let shared: Arc<dyn InstancePool> =
+        Arc::new(AutoscaleSvc::build_handler_pool(payment(), None, 10).unwrap());
     let tenant_pool: Arc<dyn InstancePool> =
         Arc::new(AutoscaleSvc::build_handler_pool(payment(), Some(acme()), 3).unwrap());
     RegistrySvc::register_handler_pool(&reg, &payment(), None, shared);

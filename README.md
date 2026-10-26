@@ -12,7 +12,7 @@ admission, in-process autoscaling, and tenant/handler registries.
 
 ## Status
 
-Six crates as of `v0.4.0`, per [`docs/adr/ADR-001`](docs/adr/ADR-001-subdomain-crate-split.md):
+Six crates as of `v0.5.0`, per [`docs/adr/ADR-001`](docs/adr/ADR-001-subdomain-crate-split.md):
 `-tenant`, `-egress`, `-autoscale`, `-ingress`, `-registry`, plus this crate as the
 umbrella facade (`LoadbalancerSvc` — unchanged public API, delegating into the five).
 A further physical port/adapter split *within* a subdomain crate is a separate,
@@ -28,8 +28,8 @@ ecosystem depends on any of these crates yet.
 - **Health tracking** — `report_outcome` transitions backends between `Healthy`,
   `Degraded`, and `Dead` states.
 - **Concurrency-gated instance pools** with autoscale feedback (ADR-013).
-- **TOML config** — integrates with `swe-edge-configbuilder` via the
-  `[loadbalancer]` section.
+- **TOML config** — parses the `[loadbalancer]` section; applications own
+  composition with their chosen configuration loader.
 
 ## Quick start
 

@@ -5,6 +5,13 @@ All notable changes to `swe-edge-loadbalancer` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-10-26
+
+### Changed
+
+- **Breaking:** removed `ConfigSection` and `OptionalSection` implementations from `LoadbalancerConfig`; configuration composition remains the consumer's responsibility. The section name, description, and owner are available as associated constants.
+- Removed the `swe-edge-configbuilder` dependency from the egress and umbrella crates.
+
 ## [0.4.1] - 2026-08-01
 
 ### Changed

@@ -1,4 +1,4 @@
-//! Integration tests for `LoadbalancerConfig` TOML parsing with `OptionalSection`.
+//! Integration tests for `LoadbalancerConfig` TOML parsing and metadata.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use swe_edge_loadbalancer_egress::{LoadbalancerConfig, Strategy};
@@ -54,7 +54,10 @@ fn test_loadbalancer_config_malformed_toml_returns_parse_failed_error() {
     let result = LoadbalancerConfig::from_toml("not valid toml [[[");
     assert!(result.is_err(), "malformed TOML must fail");
     assert!(
-        matches!(result.unwrap_err(), swe_edge_loadbalancer_egress::EgressError::ParseFailed(_)),
+        matches!(
+            result.unwrap_err(),
+            swe_edge_loadbalancer_egress::EgressError::ParseFailed(_)
+        ),
         "must be ParseFailed variant"
     );
 }
@@ -67,23 +70,19 @@ fn test_loadbalancer_config_missing_loadbalancer_section_returns_error() {
 }
 
 #[test]
-fn test_loadbalancer_config_section_name_is_loadbalancer() {
-    use swe_edge_configbuilder::ConfigSection;
-    assert_eq!(LoadbalancerConfig::section_name(), "loadbalancer");
+fn test_loadbalancer_config_section_name_constant_is_loadbalancer() {
+    assert_eq!(LoadbalancerConfig::SECTION_NAME, "loadbalancer");
 }
 
 #[test]
-fn test_loadbalancer_config_optional_section_name_is_loadbalancer() {
-    use swe_edge_configbuilder::OptionalSection;
+fn test_loadbalancer_config_description_constant_is_present() {
     assert_eq!(
-        <LoadbalancerConfig as OptionalSection>::section_name(),
-        "loadbalancer"
+        LoadbalancerConfig::DESCRIPTION,
+        "backend pool load balancing (round-robin/weighted/least-connections)"
     );
 }
 
 #[test]
-fn test_loadbalancer_config_optional_section_metadata_has_owner() {
-    use swe_edge_configbuilder::OptionalSection;
-    let meta = LoadbalancerConfig::metadata();
-    assert_eq!(meta.owner, "platform-team");
+fn test_loadbalancer_config_owner_constant_is_present() {
+    assert_eq!(LoadbalancerConfig::OWNER, "platform-team");
 }
